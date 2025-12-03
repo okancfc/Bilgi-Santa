@@ -1,0 +1,114 @@
+"use client"
+
+import { useState } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { supabase } from "@/lib/supabaseClient"
+
+interface UserNavProps {
+  userName?: string | null
+}
+
+export function UserNav({ userName }: UserNavProps) {
+  const router = useRouter()
+  const [isOpen, setIsOpen] = useState(false)
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push("/")
+  }
+
+  return (
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-dark-bg/80 backdrop-blur-lg border-b border-border">
+      <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+        <Link href="/" className="font-heading text-xl font-bold gradient-text">
+          Bilgi Santa
+        </Link>
+
+        <div className="flex items-center gap-4">
+          {/* Desktop nav */}
+          <div className="hidden md:flex items-center gap-6">
+            <Link href="/profile" className="text-muted-foreground hover:text-foreground transition-colors">
+              Profil
+            </Link>
+            <Link href="/availability" className="text-muted-foreground hover:text-foreground transition-colors">
+              Müsaitlik
+            </Link>
+            <Link href="/match" className="text-muted-foreground hover:text-foreground transition-colors">
+              Eşleşme
+            </Link>
+          </div>
+
+          {/* User menu */}
+          <div className="relative">
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-secondary transition-colors"
+            >
+              <div className="w-8 h-8 rounded-full bg-bilgi-red/20 flex items-center justify-center">
+                <span className="text-bilgi-red font-medium text-sm">{userName?.charAt(0)?.toUpperCase() || "U"}</span>
+              </div>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={`transition-transform ${isOpen ? "rotate-180" : ""}`}
+              >
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+
+            {isOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
+                <div className="absolute right-0 mt-2 w-48 bg-dark-card border border-border rounded-lg shadow-xl z-50 overflow-hidden">
+                  <div className="p-3 border-b border-border">
+                    <p className="text-sm font-medium truncate">{userName || "Kullanıcı"}</p>
+                  </div>
+
+                  {/* Mobile nav links */}
+                  <div className="md:hidden border-b border-border">
+                    <Link
+                      href="/profile"
+                      className="block px-4 py-2 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      Profil
+                    </Link>
+                    <Link
+                      href="/availability"
+                      className="block px-4 py-2 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      Müsaitlik
+                    </Link>
+                    <Link
+                      href="/match"
+                      className="block px-4 py-2 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      Eşleşme
+                    </Link>
+                  </div>
+
+                  <button
+                    onClick={handleLogout}
+                    className="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-red-500/10 transition-colors"
+                  >
+                    Çıkış Yap
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </nav>
+  )
+}
