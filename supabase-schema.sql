@@ -55,6 +55,28 @@ CREATE TABLE IF NOT EXISTS contact_messages (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- App settings table (for countdown, etc.)
+CREATE TABLE IF NOT EXISTS app_settings (
+  key TEXT PRIMARY KEY,
+  value JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Trigger for app_settings updated_at
+CREATE OR REPLACE FUNCTION update_app_settings_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_app_settings_updated_at
+  BEFORE UPDATE ON app_settings
+  FOR EACH ROW
+  EXECUTE FUNCTION update_app_settings_updated_at();
+
 -- Admin users table (optional - can also use email list)
 CREATE TABLE IF NOT EXISTS admin_users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -10,8 +10,12 @@ interface TimeLeft {
   seconds: number
 }
 
-function calculateTimeLeft(): TimeLeft {
-  const difference = TARGET_DATE.getTime() - new Date().getTime()
+function calculateTimeLeft(targetDate: Date, enabled: boolean): TimeLeft {
+  if (!enabled) {
+    return { days: 0, hours: 0, minutes: 0, seconds: 0 }
+  }
+
+  const difference = targetDate.getTime() - new Date().getTime()
 
   if (difference <= 0) {
     return { days: 0, hours: 0, minutes: 0, seconds: 0 }
@@ -41,19 +45,50 @@ function TimeUnit({ value, label }: { value: number; label: string }) {
 export function Countdown() {
   const [timeLeft, setTimeLeft] = useState<TimeLeft>({ days: 0, hours: 0, minutes: 0, seconds: 0 })
   const [mounted, setMounted] = useState(false)
+  const [targetDate, setTargetDate] = useState<Date>(TARGET_DATE)
+  const [enabled, setEnabled] = useState<boolean>(true)
+  const [labelDate, setLabelDate] = useState<string>("14 Şubat 2025")
+  const [loadingSettings, setLoadingSettings] = useState(true)
 
   useEffect(() => {
-    setMounted(true)
-    setTimeLeft(calculateTimeLeft())
+    const loadSettings = async () => {
+      try {
+        const res = await fetch("/api/settings/countdown")
+        if (res.ok) {
+          const data = (await res.json()) as { settings?: { start_at?: string | null; enabled?: boolean } }
+          if (data?.settings?.start_at) {
+            const date = new Date(data.settings.start_at)
+            setTargetDate(date)
+            setLabelDate(date.toLocaleDateString("tr-TR", { year: "numeric", month: "long", day: "numeric" }))
+          }
+          if (typeof data?.settings?.enabled === "boolean") {
+            setEnabled(data.settings.enabled)
+          }
+        }
+      } catch (error) {
+        console.error("Countdown settings load error:", error)
+      } finally {
+        setMounted(true)
+        setLoadingSettings(false)
+      }
+    }
+
+    loadSettings()
+  }, [])
+
+  useEffect(() => {
+    if (!mounted) return
+
+    setTimeLeft(calculateTimeLeft(targetDate, enabled))
 
     const timer = setInterval(() => {
-      setTimeLeft(calculateTimeLeft())
+      setTimeLeft(calculateTimeLeft(targetDate, enabled))
     }, 1000)
 
     return () => clearInterval(timer)
-  }, [])
+  }, [mounted, targetDate, enabled])
 
-  if (!mounted) {
+  if (!mounted || loadingSettings) {
     return (
       <section className="py-16 px-4">
         <div className="max-w-4xl mx-auto text-center">
@@ -70,20 +105,29 @@ export function Countdown() {
     )
   }
 
-  const isEventPassed = timeLeft.days === 0 && timeLeft.hours === 0 && timeLeft.minutes === 0 && timeLeft.seconds === 0
+  const isEventPassed =
+    enabled &&
+    timeLeft.days === 0 &&
+    timeLeft.hours === 0 &&
+    timeLeft.minutes === 0 &&
+    timeLeft.seconds === 0
 
   return (
     <section className="py-16 px-4">
       <div className="max-w-4xl mx-auto text-center">
         <h2 className="font-heading text-2xl md:text-3xl font-bold mb-2">
-          {isEventPassed ? (
-            <span className="gradient-text">Eşleştirmeler Başladı!</span>
+          {enabled ? (
+            isEventPassed ? (
+              <span className="gradient-text">Eşleştirmeler Başladı!</span>
+            ) : (
+              <span className="text-muted-foreground">Eşleştirme Başlamasına</span>
+            )
           ) : (
-            <span className="text-muted-foreground">Eşleştirme Başlamasına</span>
+            <span className="text-muted-foreground">Geri sayım henüz başlatılmadı</span>
           )}
         </h2>
 
-        {!isEventPassed && <p className="text-gold-accent mb-8 font-medium">14 Şubat 2025</p>}
+        {enabled && !isEventPassed && <p className="text-gold-accent mb-8 font-medium">{labelDate}</p>}
 
         <div className="flex justify-center gap-3 md:gap-6">
           <TimeUnit value={timeLeft.days} label="Gün" />

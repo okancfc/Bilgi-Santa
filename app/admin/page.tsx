@@ -40,6 +40,11 @@ export default function AdminPage() {
   const [messages, setMessages] = useState<ContactMessage[]>([])
   const [matchingStatus, setMatchingStatus] = useState<"idle" | "running" | "success" | "error">("idle")
   const [matchingResult, setMatchingResult] = useState<string>("")
+  const [countdownDate, setCountdownDate] = useState<string>("")
+  const [countdownTime, setCountdownTime] = useState<string>("00:00")
+  const [countdownEnabled, setCountdownEnabled] = useState<boolean>(true)
+  const [countdownStatus, setCountdownStatus] = useState<"idle" | "saving" | "success" | "error">("idle")
+  const [countdownMessage, setCountdownMessage] = useState<string>("")
 
   useEffect(() => {
     const loadAdminData = async () => {
@@ -68,13 +73,11 @@ export default function AdminPage() {
           setUserName(profile.name)
         }
 
-        // Load stats - these queries need admin access in production
-        // For now, we'll make individual queries
-        const [profilesRes, slotsRes, matchesRes, messagesRes] = await Promise.all([
+        // Load stats - counts via client (may be limited by RLS)
+        const [profilesRes, slotsRes, matchesRes] = await Promise.all([
           supabase.from("profiles").select("id, profile_completed", { count: "exact" }),
           supabase.from("availability_slots").select("id", { count: "exact" }),
           supabase.from("matches").select("id", { count: "exact" }),
-          supabase.from("contact_messages").select("*").order("created_at", { ascending: false }),
         ])
 
         const completedProfiles = (profilesRes.data || []).filter((p) => p.profile_completed).length
@@ -84,10 +87,40 @@ export default function AdminPage() {
           completedProfiles,
           totalSlots: slotsRes.count || 0,
           totalMatches: matchesRes.count || 0,
-          unreadMessages: (messagesRes.data || []).filter((m) => !m.is_read).length,
+          unreadMessages: 0,
         })
 
-        setMessages((messagesRes.data || []) as ContactMessage[])
+        // Load contact messages via admin API (service role bypasses RLS)
+        try {
+          const res = await fetch("/api/admin/messages")
+          if (res.ok) {
+            const data = (await res.json()) as { messages?: ContactMessage[] }
+            const msgs = data.messages || []
+            setMessages(msgs)
+            setStats((prev) => ({ ...prev, unreadMessages: msgs.filter((m) => !m.is_read).length }))
+          }
+        } catch (e) {
+          console.error("Admin messages fetch error:", e)
+        }
+
+        // Load countdown settings
+        try {
+          const res = await fetch("/api/settings/countdown")
+          if (res.ok) {
+            const data = (await res.json()) as { settings?: { start_at?: string | null; enabled?: boolean } }
+            const iso = data?.settings?.start_at
+            if (iso) {
+              const date = new Date(iso)
+              setCountdownDate(date.toISOString().slice(0, 10))
+              setCountdownTime(date.toISOString().slice(11, 16))
+            }
+            if (typeof data?.settings?.enabled === "boolean") {
+              setCountdownEnabled(data.settings.enabled)
+            }
+          }
+        } catch (e) {
+          console.error("Countdown settings load error:", e)
+        }
       } catch (error) {
         console.error("Error loading admin data:", error)
       } finally {
@@ -128,12 +161,51 @@ export default function AdminPage() {
 
   const markMessageAsRead = async (messageId: string) => {
     try {
-      await supabase.from("contact_messages").update({ is_read: true }).eq("id", messageId)
+      const res = await fetch("/api/admin/messages", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: messageId, is_read: true }),
+      })
+
+      if (!res.ok) {
+        throw new Error("Failed to update message")
+      }
 
       setMessages(messages.map((m) => (m.id === messageId ? { ...m, is_read: true } : m)))
       setStats((prev) => ({ ...prev, unreadMessages: prev.unreadMessages - 1 }))
     } catch (error) {
       console.error("Error marking message as read:", error)
+    }
+  }
+
+  const handleSaveCountdown = async () => {
+    if (!countdownDate || !countdownTime) {
+      setCountdownStatus("error")
+      setCountdownMessage("Tarih ve saat seçin.")
+      return
+    }
+
+    setCountdownStatus("saving")
+    setCountdownMessage("")
+    try {
+      const iso = new Date(`${countdownDate}T${countdownTime}:00`).toISOString()
+      const res = await fetch("/api/settings/countdown", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ start_at: iso, enabled: countdownEnabled }),
+      })
+
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(text || "Kaydedilemedi")
+      }
+
+      setCountdownStatus("success")
+      setCountdownMessage("Sayaç ayarları kaydedildi.")
+    } catch (error) {
+      console.error("Countdown save error:", error)
+      setCountdownStatus("error")
+      setCountdownMessage("Sayaç ayarları kaydedilemedi.")
     }
   }
 
@@ -189,6 +261,80 @@ export default function AdminPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Countdown control */}
+            <div className="bg-dark-card border border-border rounded-2xl p-6 card-glow">
+              <h2 className="font-heading text-xl font-bold mb-4 flex items-center gap-2">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="text-gold-accent"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+                Sayaç Ayarları
+              </h2>
+              <p className="text-muted-foreground mb-6">Ana sayfadaki geri sayımı başlat/durdur ve tarihi ayarla.</p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">Tarih</p>
+                  <input
+                    type="date"
+                    className="w-full px-3 py-2 bg-dark-bg border border-border rounded-md text-foreground"
+                    value={countdownDate}
+                    onChange={(e) => setCountdownDate(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">Saat</p>
+                  <input
+                    type="time"
+                    className="w-full px-3 py-2 bg-dark-bg border border-border rounded-md text-foreground"
+                    value={countdownTime}
+                    onChange={(e) => setCountdownTime(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <label className="flex items-center gap-3 mb-4">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 accent-bilgi-red"
+                  checked={countdownEnabled}
+                  onChange={(e) => setCountdownEnabled(e.target.checked)}
+                />
+                <span className="text-sm text-foreground">Geri sayım aktif</span>
+              </label>
+
+              <Button
+                onClick={handleSaveCountdown}
+                disabled={countdownStatus === "saving"}
+                className="w-full btn-bilgi mb-3"
+              >
+                {countdownStatus === "saving" ? "Kaydediliyor..." : "Sayaç Ayarlarını Kaydet"}
+              </Button>
+
+              {countdownMessage && (
+                <div
+                  className={`p-3 rounded-lg text-sm ${
+                    countdownStatus === "success"
+                      ? "bg-green-500/10 border border-green-500/30 text-green-500"
+                      : "bg-red-500/10 border border-red-500/30 text-red-500"
+                  }`}
+                >
+                  {countdownMessage}
+                </div>
+              )}
+            </div>
+
             {/* Matching Control */}
             <div className="bg-dark-card border border-border rounded-2xl p-6 card-glow">
               <h2 className="font-heading text-xl font-bold mb-4 flex items-center gap-2">
