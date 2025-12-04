@@ -33,33 +33,22 @@ export default function MatchPage() {
 
         setUser({ id: authUser.id })
 
-        // Load user's profile
+        // Load user's profile for navbar
         const { data: profile } = await supabase.from("profiles").select("name").eq("user_id", authUser.id).single()
-
         if (profile?.name) {
           setUserName(profile.name)
         }
 
-        // Load match where user is either user_a or user_b
-        const { data: matches } = await supabase
-          .from("matches")
-          .select("*")
-          .or(`user_a.eq.${authUser.id},user_b.eq.${authUser.id}`)
-          .order("created_at", { ascending: false })
-          .limit(1)
+        // Fetch match + other profile via server API (bypasses RLS)
+        const response = await fetch("/api/match")
+        if (!response.ok) {
+          console.error("Match API error:", await response.text())
+          return
+        }
 
-        if (matches && matches.length > 0) {
-          const match = matches[0] as Match
-
-          // Determine the other user's ID
-          const otherUserId = match.user_a === authUser.id ? match.user_b : match.user_a
-
-          // Load the other user's profile
-          const { data: otherProfile } = await supabase.from("profiles").select("*").eq("user_id", otherUserId).single()
-
-          if (otherProfile) {
-            setMatchData({ match, otherProfile: otherProfile as Profile })
-          }
+        const data = (await response.json()) as { match: Match | null; otherProfile: Profile | null }
+        if (data.match && data.otherProfile) {
+          setMatchData({ match: data.match, otherProfile: data.otherProfile })
         }
       } catch (error) {
         console.error("Error loading match:", error)

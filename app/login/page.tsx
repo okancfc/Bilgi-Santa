@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { supabase } from "@/lib/supabaseClient"
@@ -23,38 +23,58 @@ export default function LoginPage() {
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle")
   const [errorMessage, setErrorMessage] = useState("")
 
+  // Check for error from URL params (e.g., failed email confirmation)
+  useEffect(() => {
+    const error = searchParams.get("error")
+    if (error === "confirmation_failed") {
+      setStatus("error")
+      setErrorMessage("E-posta doğrulama başarısız oldu. Lütfen tekrar deneyin veya yeni bir doğrulama e-postası isteyin.")
+    }
+  }, [searchParams])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log("🔑 Login başladı")
+    console.log("Email:", formData.email)
     setStatus("loading")
     setErrorMessage("")
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
+      console.log("📤 Server-side login API çağrılıyor...")
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
       })
 
-      if (error) {
-        throw error
+      const result = await response.json()
+      console.log("📥 Login API yanıtı:", result)
+
+      if (!response.ok) {
+        console.error("❌ Login hatası:", result.error)
+        throw new Error(result.error || "Login failed")
       }
 
-      if (data.session) {
-        // Check if profile is complete
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("profile_completed")
-          .eq("user_id", data.user.id)
-          .single()
-
-        if (profile?.profile_completed) {
-          router.push("/match")
-        } else {
-          router.push(redirectPath)
-        }
-      }
+      console.log("✅✅✅ LOGIN BAŞARILI! ✅✅✅")
+      console.log("👤 Kullanıcı:", result.user?.email)
+      console.log("📋 Profile completed:", result.profile_completed)
+      
+      // Server set the cookies, now redirect
+      const targetPath = result.profile_completed ? "/match" : redirectPath
+      console.log("🔄 Yönlendiriliyor:", targetPath)
+      
+      // Full page reload to ensure middleware sees the new session
+      window.location.replace(targetPath)
     } catch (error) {
+      console.error("💥 Login catch bloğu:", error)
       setStatus("error")
       if (error instanceof Error) {
+        console.error("Error message:", error.message)
         if (error.message.includes("Invalid login credentials")) {
           setErrorMessage("E-posta veya şifre hatalı.")
         } else if (error.message.includes("Email not confirmed")) {
@@ -66,6 +86,7 @@ export default function LoginPage() {
         setErrorMessage("Giriş sırasında bir hata oluştu.")
       }
     }
+    console.log("🏁 Login fonksiyonu tamamlandı")
   }
 
   return (
@@ -110,7 +131,7 @@ export default function LoginPage() {
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required
                 className="mt-1 bg-dark-bg border-border"
-                placeholder="ogrenci@bilgi.edu.tr"
+                placeholder="ogrenci@bilgiedu.net"
               />
             </div>
 

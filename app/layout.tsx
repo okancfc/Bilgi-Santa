@@ -18,14 +18,14 @@ const poppins = Poppins({
 })
 
 export const metadata: Metadata = {
-  title: "Bilgi Santa - İstanbul Bilgi Üniversitesi Gizli Arkadaş",
+  title: "Bilgi Santa - İstanbul Bilgi Üniversitesi Hediyelеşme Platformu",
   description:
     "İstanbul Bilgi Üniversitesi öğrencileri için anonim hediye eşleştirme ve buluşma platformu. Yeni arkadaşlıklar kur, sürpriz hediyeler al!",
-  keywords: ["Bilgi Üniversitesi", "gizli arkadaş", "hediye", "eşleştirme", "öğrenci"],
+  keywords: ["Bilgi Üniversitesi", "hediyelеşme", "hediye", "eşleştirme", "öğrenci"],
   authors: [{ name: "Bilgi Santa Team" }],
   openGraph: {
     title: "Bilgi Santa 2026",
-    description: "Bilgi Üniversitesi Gizli Arkadaş Eşleştirme Platformu",
+    description: "Bilgi Üniversitesi Hediyelеşme ve Eşleştirme Platformu",
     type: "website",
   },
     generator: 'v0.app'

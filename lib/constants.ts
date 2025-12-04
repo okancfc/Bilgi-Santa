@@ -69,6 +69,6 @@ export const CLASS_YEARS = [
 
 // Admin emails (for matching authorization)
 export const ADMIN_EMAILS = [
-  "admin@bilgi.edu.tr",
+  "gaffar.cifci@bilgiedu.net",
   // Add more admin emails here
 ]

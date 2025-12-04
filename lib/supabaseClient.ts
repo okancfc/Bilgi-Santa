@@ -1,20 +1,21 @@
-import { createClient } from "@supabase/supabase-js"
+import { createBrowserClient } from "@supabase/ssr"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 // Client-side Supabase client (singleton pattern)
-let supabaseInstance: ReturnType<typeof createClient> | null = null
+let supabaseInstance: ReturnType<typeof createBrowserClient> | null = null
 
 export function getSupabaseClient() {
   if (!supabaseInstance) {
-    supabaseInstance = createClient(supabaseUrl, supabaseAnonKey)
+    // Use cookie-based storage so sessions set on the server are available in the browser
+    supabaseInstance = createBrowserClient(supabaseUrl, supabaseAnonKey)
   }
   return supabaseInstance
 }
 
 // For direct import convenience
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = getSupabaseClient()
 
 // Types for database tables
 export interface Profile {

@@ -23,75 +23,101 @@ export default function SignupPage() {
   const [errorMessage, setErrorMessage] = useState("")
 
   const validateEmail = (email: string): boolean => {
-    return email.toLowerCase().endsWith("@bilgi.edu.tr")
+    return email.toLowerCase().endsWith("@bilgiedu.net")
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log("🚀 Signup başladı")
     setStatus("loading")
     setErrorMessage("")
 
     // Validate email domain
     if (!validateEmail(formData.email)) {
+      console.log("❌ Email validasyonu başarısız:", formData.email)
       setStatus("error")
-      setErrorMessage("Sadece @bilgi.edu.tr uzantılı e-posta adresleri kabul edilmektedir.")
+      setErrorMessage("Sadece @bilgiedu.net uzantılı e-posta adresleri kabul edilmektedir.")
       return
     }
+    console.log("✅ Email validasyonu başarılı")
 
     // Validate password match
     if (formData.password !== formData.confirmPassword) {
+      console.log("❌ Şifreler eşleşmiyor")
       setStatus("error")
       setErrorMessage("Şifreler eşleşmiyor.")
       return
     }
+    console.log("✅ Şifre eşleşmesi doğru")
 
     // Validate password length
     if (formData.password.length < 6) {
+      console.log("❌ Şifre çok kısa:", formData.password.length)
       setStatus("error")
       setErrorMessage("Şifre en az 6 karakter olmalıdır.")
       return
     }
+    console.log("✅ Şifre uzunluğu yeterli")
 
     try {
+      console.log("📤 Supabase signUp çağrısı yapılıyor...")
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
-          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/profile`,
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
           data: {
             name: formData.name,
           },
         },
       })
 
+      console.log("📥 Supabase signUp yanıtı:", { data, error })
+
       if (error) {
+        console.error("❌ SignUp hatası:", error)
         throw error
       }
 
-      if (data.user) {
-        // Create initial profile
-        const { error: profileError } = await supabase.from("profiles").insert({
-          user_id: data.user.id,
-          name: formData.name,
-          email: formData.email,
-          is_active: true,
-          profile_completed: false,
-        })
+      console.log("✅ SignUp başarılı, user:", data.user?.id)
+      console.log("Session var mı?", !!data.session)
 
-        if (profileError) {
-          console.error("Profile creation error:", profileError)
+      if (data.user) {
+        // Profile will be created automatically by database trigger
+        console.log("👤 Kullanıcı metadata güncelleniyor...")
+        
+        // Update name in metadata
+        if (formData.name) {
+          try {
+            await supabase.auth.updateUser({
+              data: { name: formData.name }
+            })
+            console.log("✅ Metadata güncellendi")
+          } catch (updateError) {
+            console.error("⚠️ Metadata güncellenirken hata:", updateError)
+          }
         }
 
+        console.log("✅ Status success olarak ayarlanıyor")
         setStatus("success")
 
         // If email confirmation is disabled, redirect directly
         if (data.session) {
-          router.push("/profile")
+          console.log("🔄 Session var, profile'a yönlendiriliyor...")
+          window.location.href = "/profile"
+        } else {
+          console.log("📧 Email confirmation gerekli, success mesajı gösteriliyor")
         }
+      } else {
+        console.log("⚠️ data.user yok!")
+        setStatus("error")
+        setErrorMessage("Kayıt işlemi tamamlanamadı. Lütfen tekrar deneyin.")
       }
     } catch (error) {
+      console.error("💥 Catch bloğu yakaladı:", error)
       setStatus("error")
       if (error instanceof Error) {
+        console.error("Error message:", error.message)
         if (error.message.includes("already registered")) {
           setErrorMessage("Bu e-posta adresi zaten kayıtlı.")
         } else {
@@ -101,6 +127,7 @@ export default function SignupPage() {
         setErrorMessage("Kayıt sırasında bir hata oluştu.")
       }
     }
+    console.log("🏁 Signup fonksiyonu tamamlandı, son status:", status)
   }
 
   return (
@@ -183,10 +210,10 @@ export default function SignupPage() {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
                   className="mt-1 bg-dark-bg border-border"
-                  placeholder="ogrenci@bilgi.edu.tr"
+                  placeholder="ogrenci@bilgiedu.net"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Sadece @bilgi.edu.tr uzantılı adresler kabul edilir.
+                  Sadece @bilgiedu.net uzantılı adresler kabul edilir.
                 </p>
               </div>
 

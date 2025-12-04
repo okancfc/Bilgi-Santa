@@ -130,7 +130,7 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required
                 className="mt-1 bg-dark-bg border-border"
-                placeholder="ornek@bilgi.edu.tr"
+                placeholder="ornek@bilgiedu.net"
               />
             </div>
 

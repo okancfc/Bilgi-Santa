@@ -34,32 +34,68 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const loadProfile = async () => {
+      console.log("📂 Profil yükleme başladı")
       try {
+        console.log("🔍 Auth kullanıcısı getiriliyor...")
         const {
           data: { user: authUser },
+          error: authError,
         } = await supabase.auth.getUser()
 
+        console.log("📥 Auth yanıtı:", { 
+          user: authUser?.id, 
+          email: authUser?.email,
+          error: authError?.message 
+        })
+
+        if (authError) {
+          console.error("❌ Auth hatası:", authError)
+        }
+
         if (!authUser) {
+          console.log("🚫 Kullanıcı yok, login'e yönlendiriliyor")
           router.push("/login")
           return
         }
 
+        console.log("✅ Auth kullanıcısı bulundu:", authUser.email)
+        console.log("👤 User state set ediliyor:", { id: authUser.id, email: authUser.email })
         setUser({ id: authUser.id, email: authUser.email || "" })
 
         // Load existing profile
-        const { data: existingProfile } = await supabase
+        console.log("📊 Mevcut profil sorgulanıyor...")
+        const { data: existingProfile, error: profileError } = await supabase
           .from("profiles")
           .select("*")
           .eq("user_id", authUser.id)
           .single()
 
+        console.log("📥 Profil sorgu sonucu:", { 
+          exists: !!existingProfile, 
+          error: profileError?.message 
+        })
+
         if (existingProfile) {
+          console.log("✅ Mevcut profil bulundu:")
+          console.log("  - Name:", existingProfile.name)
+          console.log("  - Department:", existingProfile.department)
+          console.log("  - Class Year:", existingProfile.class_year)
+          console.log("  - Interests:", existingProfile.interests?.length || 0)
+          console.log("  - Gift Preferences:", existingProfile.gift_preferences)
+          console.log("  - Favorite Things:", existingProfile.favorite_things?.length || 0)
+          
           setProfile(existingProfile)
+          
           // Parse gift preferences if stored as comma-separated string
           if (existingProfile.gift_preferences) {
-            setSelectedGiftPrefs(existingProfile.gift_preferences.split(",").map((s: string) => s.trim()))
+            const prefs = existingProfile.gift_preferences.split(",").map((s: string) => s.trim())
+            console.log("🎁 Gift preferences parsed:", prefs)
+            setSelectedGiftPrefs(prefs)
           }
         } else {
+          console.log("⚠️ Profil bulunamadı, yeni profil oluşturuluyor")
+          console.log("Metadata name:", authUser.user_metadata?.name)
+          
           // Create a new profile
           setProfile((prev) => ({
             ...prev,
@@ -67,9 +103,12 @@ export default function ProfilePage() {
             email: authUser.email,
           }))
         }
+        
+        console.log("✅ Profil yükleme tamamlandı")
       } catch (error) {
-        console.error("Error loading profile:", error)
+        console.error("💥 Profil yükleme hatası:", error)
       } finally {
+        console.log("🏁 Loading false olarak set ediliyor")
         setLoading(false)
       }
     }
@@ -79,10 +118,66 @@ export default function ProfilePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user) return
+    console.log("💾 Profil kaydetme başladı")
+    console.log("👤 User state:", user)
+    
+    if (!user) {
+      console.error("❌ User state boş!")
+      console.error("Bu bir bug - sayfayı yenileyip tekrar deneyin")
+      setMessage({ 
+        type: "error", 
+        text: "Oturum hatası. Lütfen sayfayı yenileyip tekrar deneyin." 
+      })
+      return
+    }
+    
+    console.log("✅ User ID:", user.id)
+    console.log("✅ User Email:", user.email)
 
     setSaving(true)
     setMessage(null)
+
+    // Validation
+    console.log("🔍 Form validasyonu başlıyor...")
+    const missingFields: string[] = []
+    
+    if (!profile.name || profile.name.trim() === "") {
+      missingFields.push("İsim Soyisim")
+    }
+    if (!profile.department || profile.department.trim() === "") {
+      missingFields.push("Bölüm")
+    }
+    if (!profile.class_year) {
+      missingFields.push("Sınıf")
+    }
+    if (!profile.interests || profile.interests.length === 0) {
+      missingFields.push("İlgi Alanları (en az 1 tane)")
+    }
+    if (!selectedGiftPrefs || selectedGiftPrefs.length === 0) {
+      missingFields.push("Hediye Tercihleri (en az 1 tane)")
+    }
+    console.log("📋 Form durumu:")
+    console.log("  - İsim:", profile.name || "❌ BOŞ")
+    console.log("  - Email:", user.email || "❌ BOŞ")
+    console.log("  - Bölüm:", profile.department || "❌ BOŞ")
+    console.log("  - Sınıf:", profile.class_year || "❌ BOŞ")
+    console.log("  - İlgi Alanları:", profile.interests?.length || 0, "adet")
+    console.log("  - Hediye Tercihleri:", selectedGiftPrefs.length, "adet")
+    console.log("  - Favori Şeyler:", profile.favorite_things?.length || 0, "adet")
+    console.log("  - Hakkımda:", profile.about_me ? "✅ DOLU" : "⚠️ BOŞ (opsiyonel)")
+
+    if (missingFields.length > 0) {
+      console.error("❌ EKSİK ALANLAR:")
+      missingFields.forEach(field => console.error(`   - ${field}`))
+      setMessage({ 
+        type: "error", 
+        text: `Lütfen şu alanları doldurun: ${missingFields.join(", ")}` 
+      })
+      setSaving(false)
+      return
+    }
+
+    console.log("✅ Tüm alanlar dolu, kaydetme işlemi başlıyor...")
 
     try {
       const profileData = {
@@ -100,18 +195,25 @@ export default function ProfilePage() {
         updated_at: new Date().toISOString(),
       }
 
+      console.log("📤 Supabase'e gönderiliyor...")
       const { error } = await supabase.from("profiles").upsert(profileData, { onConflict: "user_id" })
 
-      if (error) throw error
+      if (error) {
+        console.error("❌ Supabase hatası:", error)
+        throw error
+      }
 
+      console.log("✅✅✅ PROFİL BAŞARIYLA KAYDEDİLDİ! ✅✅✅")
       setMessage({ type: "success", text: "Profil başarıyla kaydedildi!" })
 
       // Redirect to availability page after a short delay
+      console.log("🔄 1.5 saniye sonra availability sayfasına yönlendirilecek...")
       setTimeout(() => {
+        console.log("➡️ Availability sayfasına yönlendiriliyor...")
         router.push("/availability")
       }, 1500)
     } catch (error) {
-      console.error("Error saving profile:", error)
+      console.error("💥 Profil kaydetme hatası:", error)
       setMessage({ type: "error", text: "Profil kaydedilirken bir hata oluştu." })
     } finally {
       setSaving(false)

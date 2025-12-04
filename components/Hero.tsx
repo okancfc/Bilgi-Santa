@@ -18,7 +18,7 @@ export function Hero() {
 
         {/* Subtitle */}
         <p className="text-xl md:text-2xl text-muted-foreground mb-4 font-heading">
-          Gizli Arkadaş Eşleştirme Platformu
+          Hediyeleşme ve Eşleştirme Platformu
         </p>
 
         {/* Description */}

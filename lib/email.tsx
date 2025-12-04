@@ -107,7 +107,7 @@ export function createMatchNotificationEmail(params: {
     </p>
     
     <div class="footer">
-      <p>İstanbul Bilgi Üniversitesi Gizli Arkadaş Platformu</p>
+      <p>İstanbul Bilgi Üniversitesi Hediyeleşme Platformu</p>
       <p>© 2026 Bilgi Santa</p>
     </div>
   </div>

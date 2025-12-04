@@ -2,6 +2,8 @@ import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
 export async function middleware(request: NextRequest) {
+  console.log("🛡️ Middleware çalışıyor:", request.nextUrl.pathname)
+  
   let supabaseResponse = NextResponse.next({
     request,
   })
@@ -26,31 +28,49 @@ export async function middleware(request: NextRequest) {
   )
 
   // Refresh session if expired
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  let user = null
+  try {
+    const { data, error } = await supabase.auth.getUser()
+    if (error) {
+      // AuthSessionMissingError is normal for logged out users
+      if (!error.message?.includes("Auth session missing")) {
+        console.error("⚠️ Middleware auth error:", error.message)
+      }
+    } else {
+      user = data.user
+      console.log("✅ Middleware: Kullanıcı authenticated:", user?.email)
+    }
+  } catch (error) {
+    console.error("💥 Middleware exception:", error)
+  }
 
   // Protected routes
   const protectedPaths = ["/profile", "/availability", "/match", "/admin"]
   const isProtectedPath = protectedPaths.some((path) => request.nextUrl.pathname.startsWith(path))
 
-  // Auth routes (redirect if already logged in)
+  // Auth routes (don't redirect - let users access login/signup pages)
   const authPaths = ["/login", "/signup"]
   const isAuthPath = authPaths.some((path) => request.nextUrl.pathname.startsWith(path))
 
+  // Only redirect if trying to access protected path without auth
   if (isProtectedPath && !user) {
+    console.log("🚫 Protected route, kullanıcı yok, login'e yönlendiriliyor")
     const url = request.nextUrl.clone()
     url.pathname = "/login"
     url.searchParams.set("redirect", request.nextUrl.pathname)
     return NextResponse.redirect(url)
   }
 
-  if (isAuthPath && user) {
+  // If user is logged in and on auth page, redirect to profile
+  // BUT: Only do this for GET requests, not POST (form submissions)
+  if (isAuthPath && user && request.method === "GET") {
+    console.log("👤 Kullanıcı zaten giriş yapmış, profile'a yönlendiriliyor")
     const url = request.nextUrl.clone()
     url.pathname = "/profile"
     return NextResponse.redirect(url)
   }
 
+  console.log("✅ Middleware: İstek devam ediyor")
   return supabaseResponse
 }
 

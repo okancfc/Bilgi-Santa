@@ -14,7 +14,7 @@ export function Footer() {
             {/* Logo and info */}
             <div className="text-center md:text-left">
               <h3 className="font-heading text-xl font-bold gradient-text mb-2">Bilgi Santa</h3>
-              <p className="text-muted-foreground text-sm">İstanbul Bilgi Üniversitesi Gizli Arkadaş Platformu</p>
+              <p className="text-muted-foreground text-sm">İstanbul Bilgi Üniversitesi Hediyeleşme Platformu</p>
               <p className="text-muted-foreground text-xs mt-1">© 2025 Tüm hakları saklıdır.</p>
             </div>
 
@@ -45,7 +45,7 @@ export function Footer() {
           {/* Bottom note */}
           <div className="mt-8 pt-6 border-t border-border/50 text-center">
             <p className="text-muted-foreground text-xs">
-              Bu platform İstanbul Bilgi Üniversitesi öğrencileri için hazırlanmıştır. Kayıt olmak için @bilgi.edu.tr
+              Bu platform İstanbul Bilgi Üniversitesi öğrencileri için hazırlanmıştır. Kayıt olmak için @bilgiedu.net
               uzantılı e-posta adresi gereklidir.
             </p>
           </div>

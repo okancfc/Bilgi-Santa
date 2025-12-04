@@ -2,7 +2,7 @@ const steps = [
   {
     number: 1,
     title: "Kayıt Ol",
-    description: "Bilgi e-posta adresinle (@bilgi.edu.tr) hızlıca kayıt ol.",
+    description: "Bilgi e-posta adresinle (@bilgiedu.net) hızlıca kayıt ol.",
   },
   {
     number: 2,
