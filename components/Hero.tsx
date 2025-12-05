@@ -1,9 +1,23 @@
+import Image from "next/image"
 import Link from "next/link"
 
 export function Hero() {
   return (
-    <section className="relative min-h-[90vh] flex items-center justify-center px-4 py-20">
-      <div className="max-w-4xl mx-auto text-center z-10">
+    <section className="relative min-h-[90vh] flex flex-col items-center justify-start pb-20 overflow-hidden">
+      <div className="relative w-[100vw] ml-[calc(50%-50vw)] h-60 mb-8 overflow-hidden">
+        <Image
+          src="/hero-bg2.png"
+          alt="Hero Background"
+          fill
+          priority
+          className="object-cover"
+        />
+        <div
+          className="absolute inset-0 bg-gradient-to-b from-background/10 via-background/40 to-black pointer-events-none"
+          aria-hidden
+        />
+      </div>
+      <div className="max-w-4xl mx-auto text-center z-10 px-4 sm:px-6">
         {/* Year badge */}
         <div className="inline-block mb-6">
           <span className="px-4 py-2 bg-bilgi-red/20 border border-bilgi-red/30 rounded-full text-bilgi-red font-medium text-sm">
@@ -69,7 +83,7 @@ export function Hero() {
 
         {/* Decorative elements */}
         <div className="absolute -top-20 -left-20 w-72 h-72 bg-bilgi-red/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-20 -right-20 w-72 h-72 bg-gold-accent/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-10 -right-20 w-72 h-72 bg-gold-accent/10 rounded-full blur-3xl" />
       </div>
     </section>
   )
