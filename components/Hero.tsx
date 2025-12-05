@@ -16,14 +16,9 @@ export function Hero() {
           <span className="gradient-text">Bilgi Santa</span>
         </h1>
 
-        {/* Subtitle */}
-        <p className="text-xl md:text-2xl text-muted-foreground mb-4 font-heading">
-          Hediyeleşme ve Eşleştirme Platformu
-        </p>
-
         {/* Description */}
         <p className="text-lg text-muted-foreground/80 max-w-2xl mx-auto mb-10 leading-relaxed">
-          İstanbul Bilgi Üniversitesi öğrencileri için anonim hediye eşleştirme ve buluşma platformu. Yeni arkadaşlıklar
+          İstanbul Bilgi Üniversitesi öğrencileri için anonim hediyeleşme platformu. Yeni arkadaşlıklar
           kur, sürpriz hediyeler al ve kampüste keyifli anılar biriktir!
         </p>
 

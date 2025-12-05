@@ -33,7 +33,7 @@ function TimeUnit({ value, label }: { value: number; label: string }) {
   return (
     <div className="flex flex-col items-center">
       <div className="bg-dark-card border border-border rounded-xl p-4 md:p-6 min-w-[80px] md:min-w-[100px] card-glow">
-        <span className="text-3xl md:text-5xl font-bold font-heading gradient-text">
+        <span className="text-3xl md:text-5xl font-bold font-mono tabular-nums leading-none gradient-text">
           {String(value).padStart(2, "0")}
         </span>
       </div>

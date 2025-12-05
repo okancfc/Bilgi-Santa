@@ -2,7 +2,6 @@ import type React from "react"
 import type { Metadata, Viewport } from "next"
 import { Inter, Poppins } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
-import { FloatingIconButton } from "@/components/FloatingIconButton"
 import "./globals.css"
 
 const inter = Inter({
@@ -29,11 +28,12 @@ export const metadata: Metadata = {
     description: "Bilgi Üniversitesi Hediyelеşme ve Eşleştirme Platformu",
     type: "website",
   },
-    generator: 'v0.app'
+  themeColor: "#000000",
+  generator: "v0.app",
 }
 
 export const viewport: Viewport = {
-  themeColor: "#E31E24",
+  themeColor: "#000000",
   width: "device-width",
   initialScale: 1,
 }
@@ -46,12 +46,6 @@ export default function RootLayout({
   return (
     <html lang="tr" className="dark">
       <body className={`${inter.variable} ${poppins.variable} font-sans antialiased min-h-screen`}>
-        <FloatingIconButton 
-          href="https://www.linkedin.com/in/bilgi-meca-51629a387/"
-          imageUrl="/linkedin-logo.png"
-          altText="LinkedIn"
-          external={true}
-        />
         {children}
         <Analytics />
       </body>
