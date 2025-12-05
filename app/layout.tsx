@@ -2,6 +2,7 @@ import type React from "react"
 import type { Metadata, Viewport } from "next"
 import { Inter, Poppins } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
+import { FloatingIconButton } from "@/components/FloatingIconButton"
 import "./globals.css"
 
 const inter = Inter({
@@ -45,6 +46,12 @@ export default function RootLayout({
   return (
     <html lang="tr" className="dark">
       <body className={`${inter.variable} ${poppins.variable} font-sans antialiased min-h-screen`}>
+        <FloatingIconButton 
+          href="https://www.linkedin.com/in/bilgi-meca-51629a387/"
+          imageUrl="/linkedin-logo.png"
+          altText="LinkedIn"
+          external={true}
+        />
         {children}
         <Analytics />
       </body>
