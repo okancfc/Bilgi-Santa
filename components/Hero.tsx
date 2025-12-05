@@ -1,15 +1,19 @@
 import Image from "next/image"
 import Link from "next/link"
 
+import heroBg from "@/public/hero-bg2-min.webp"
+
 export function Hero() {
   return (
     <section className="relative min-h-[90vh] flex flex-col items-center justify-start pb-20 overflow-hidden">
       <div className="relative w-[100vw] ml-[calc(50%-50vw)] h-60 mb-8 overflow-hidden">
         <Image
-          src="/hero-bg2-min.png"
+          src={heroBg}
           alt="Hero Background"
           fill
           priority
+          placeholder="blur"
+          sizes="100vw"
           className="object-cover"
         />
         <div
