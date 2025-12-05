@@ -1,9 +1,5 @@
 import { StarsBackground } from "@/components/StarsBackground"
-import { Hero } from "@/components/Hero"
-import { Countdown } from "@/components/Countdown"
-import { StepsSection } from "@/components/StepsSection"
-import { HowWeMeetBanner } from "@/components/HowWeMeetBanner"
-import { Footer } from "@/components/Footer"
+import { HomeContent } from "@/components/HomeContent"
 
 export default function HomePage() {
   return (
@@ -11,11 +7,7 @@ export default function HomePage() {
       <StarsBackground />
 
       <div className="relative z-10">
-        <Hero />
-        <Countdown />
-        <StepsSection />
-        <HowWeMeetBanner />
-        <Footer />
+        <HomeContent />
       </div>
     </main>
   )

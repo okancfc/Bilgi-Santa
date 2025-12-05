@@ -11,6 +11,8 @@ interface CandidatePair {
   userA: UserWithData
   userB: UserWithData
   score: number
+  overlapMinutes: number
+  campusMatch: boolean
   overlappingSlot: {
     date: string
     start: string
@@ -54,6 +56,17 @@ function calculateInterestScore(interestsA: string[], interestsB: string[]): num
 }
 
 /**
+ * Parse gift preferences (comma separated) into string array
+ */
+function parseGiftPreferences(pref?: string | null): string[] {
+  if (!pref) return []
+  return pref
+    .split(",")
+    .map((p) => p.trim().toLowerCase())
+    .filter(Boolean)
+}
+
+/**
  * Convert time string "HH:MM:SS" or "HH:MM" to minutes since midnight
  */
 function timeToMinutes(timeStr: string): number {
@@ -63,23 +76,35 @@ function timeToMinutes(timeStr: string): number {
   return hours * 60 + minutes
 }
 
+function minutesToTime(totalMinutes: number): string {
+  const minutesInDay = 24 * 60
+  const normalized = ((totalMinutes % minutesInDay) + minutesInDay) % minutesInDay
+  const hours = Math.floor(normalized / 60)
+  const minutes = normalized % 60
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`
+}
+
 /**
  * Find overlapping time slot between two users
  * Returns the overlapping slot if found, null otherwise
  */
-function findOverlappingSlot(
+function findBestOverlappingSlot(
   slotsA: AvailabilitySlot[],
   slotsB: AvailabilitySlot[],
-): { date: string; start: string; end: string; location: string | null } | null {
+): { date: string; start: string; end: string; location: string | null; minutes: number; campusMatch: boolean } | null {
+  let best: {
+    date: string
+    start: string
+    end: string
+    location: string | null
+    minutes: number
+    campusMatch: boolean
+  } | null = null
+
   for (const slotA of slotsA) {
     for (const slotB of slotsB) {
-      // Check if same date
       if (slotA.slot_date !== slotB.slot_date) continue
 
-      // Check if same campus (if both specified)
-      if (slotA.campus && slotB.campus && slotA.campus !== slotB.campus) continue
-
-      // Check time overlap
       const startA = timeToMinutes(slotA.start_time)
       const endA = timeToMinutes(slotA.end_time)
       const startB = timeToMinutes(slotB.start_time)
@@ -87,26 +112,118 @@ function findOverlappingSlot(
 
       const overlapStart = Math.max(startA, startB)
       const overlapEnd = Math.min(endA, endB)
+      const overlapMinutes = overlapEnd - overlapStart
 
-      // Need at least 30 minutes of overlap
-      if (overlapEnd - overlapStart >= 30) {
-        // Format times back to strings
-        const startHours = Math.floor(overlapStart / 60)
-        const startMins = overlapStart % 60
-        const endHours = Math.floor(overlapEnd / 60)
-        const endMins = overlapEnd % 60
+      // Require minimum 30 minutes shared availability
+      if (overlapMinutes < 30) continue
 
-        return {
-          date: slotA.slot_date,
-          start: `${String(startHours).padStart(2, "0")}:${String(startMins).padStart(2, "0")}`,
-          end: `${String(endHours).padStart(2, "0")}:${String(endMins).padStart(2, "0")}`,
-          location: slotA.campus || slotB.campus || slotA.location || slotB.location,
-        }
+      const campusMatch = Boolean(slotA.campus && slotB.campus && slotA.campus === slotB.campus)
+
+      const startHours = Math.floor(overlapStart / 60)
+      const startMins = overlapStart % 60
+      const endHours = Math.floor(overlapEnd / 60)
+      const endMins = overlapEnd % 60
+
+      const candidate = {
+        date: slotA.slot_date,
+        start: `${String(startHours).padStart(2, "0")}:${String(startMins).padStart(2, "0")}`,
+        end: `${String(endHours).padStart(2, "0")}:${String(endMins).padStart(2, "0")}`,
+        location: slotA.campus || slotB.campus || slotA.location || slotB.location,
+        minutes: overlapMinutes,
+        campusMatch,
+      }
+
+      // Choose the slot with longest overlap, prefer campus match on ties
+      if (
+        !best ||
+        candidate.minutes > best.minutes ||
+        (candidate.minutes === best.minutes && candidate.campusMatch && !best.campusMatch)
+      ) {
+        best = candidate
       }
     }
   }
 
-  return null
+  return best
+}
+
+/**
+ * Relaxed slot finder to ensure everyone can be paired.
+ * Picks the closest-in-time slot (same day preferred), even if there is no real overlap.
+ */
+function findRelaxedSlot(
+  slotsA: AvailabilitySlot[],
+  slotsB: AvailabilitySlot[],
+): {
+  date: string
+  start: string
+  end: string
+  location: string | null
+  minutes: number
+  gapMinutes: number
+  campusMatch: boolean
+  dateDiffMinutes: number
+} | null {
+  let best: {
+    date: string
+    start: string
+    end: string
+    location: string | null
+    minutes: number
+    gapMinutes: number
+    campusMatch: boolean
+    dateDiffMinutes: number
+  } | null = null
+
+  for (const slotA of slotsA) {
+    for (const slotB of slotsB) {
+      const dateA = new Date(`${slotA.slot_date}T00:00:00Z`)
+      const dateB = new Date(`${slotB.slot_date}T00:00:00Z`)
+      const dateDiffMinutes = Math.abs(dateA.getTime() - dateB.getTime()) / 60000
+
+      const startA = timeToMinutes(slotA.start_time)
+      const endA = timeToMinutes(slotA.end_time)
+      const startB = timeToMinutes(slotB.start_time)
+      const endB = timeToMinutes(slotB.end_time)
+
+      const overlapStart = Math.max(startA, startB)
+      const overlapEnd = Math.min(endA, endB)
+      const overlapMinutes = Math.max(0, overlapEnd - overlapStart)
+      const gapMinutes = overlapMinutes > 0 ? 0 : overlapStart - overlapEnd
+
+      const meetingStartMinutes = overlapMinutes > 0 ? overlapStart : Math.max(startA, startB)
+      const meetingDuration = overlapMinutes > 0 ? overlapMinutes : 30
+      const meetingEndMinutes = meetingStartMinutes + Math.max(meetingDuration, 15)
+
+      const campusMatch = Boolean(slotA.campus && slotB.campus && slotA.campus === slotB.campus)
+      const location = slotA.campus || slotB.campus || slotA.location || slotB.location
+      const meetingDate = dateA <= dateB ? slotA.slot_date : slotB.slot_date
+
+      const candidate = {
+        date: meetingDate,
+        start: minutesToTime(meetingStartMinutes),
+        end: minutesToTime(meetingEndMinutes),
+        location,
+        minutes: overlapMinutes,
+        gapMinutes: Math.max(gapMinutes, 0),
+        campusMatch,
+        dateDiffMinutes,
+      }
+
+      if (
+        !best ||
+        candidate.minutes > best.minutes || // prefer real overlap
+        (candidate.minutes === best.minutes && candidate.gapMinutes < best.gapMinutes) || // then smaller gap
+        (candidate.minutes === best.minutes &&
+          candidate.gapMinutes === best.gapMinutes &&
+          candidate.dateDiffMinutes < best.dateDiffMinutes)
+      ) {
+        best = candidate
+      }
+    }
+  }
+
+  return best
 }
 
 /**
@@ -164,35 +281,59 @@ export async function runMatching(supabaseAdmin: {
 
   // 5. Generate all candidate pairs with overlapping availability
   const candidates: CandidatePair[] = []
+  const candidateCounts = new Map<string, number>()
 
   for (let i = 0; i < users.length; i++) {
     for (let j = i + 1; j < users.length; j++) {
       const userA = users[i]
       const userB = users[j]
 
-      const overlappingSlot = findOverlappingSlot(userA.slots, userB.slots)
+      const overlappingSlot = findBestOverlappingSlot(userA.slots, userB.slots)
 
-      if (overlappingSlot) {
-        const score = calculateInterestScore(userA.profile.interests || [], userB.profile.interests || [])
+      if (!overlappingSlot) continue
 
-        candidates.push({
-          userA,
-          userB,
-          score,
-          overlappingSlot,
-        })
-      }
+      const interestScore = calculateInterestScore(userA.profile.interests || [], userB.profile.interests || [])
+      const giftScore = calculateInterestScore(
+        parseGiftPreferences(userA.profile.gift_preferences),
+        parseGiftPreferences(userB.profile.gift_preferences),
+      )
+
+      // Overlap weight increases with duration (up to 2 hours cap)
+      const overlapWeight = Math.min(overlappingSlot.minutes / 120, 1)
+      const campusBonus = overlappingSlot.campusMatch ? 0.1 : 0
+
+      const score = interestScore * 0.5 + giftScore * 0.2 + overlapWeight * 0.3 + campusBonus
+
+      candidates.push({
+        userA,
+        userB,
+        score,
+        overlapMinutes: overlappingSlot.minutes,
+        campusMatch: overlappingSlot.campusMatch,
+        overlappingSlot,
+      })
+
+      candidateCounts.set(userA.userId, (candidateCounts.get(userA.userId) || 0) + 1)
+      candidateCounts.set(userB.userId, (candidateCounts.get(userB.userId) || 0) + 1)
     }
   }
 
   console.log(`[Matching] Found ${candidates.length} candidate pairs`)
 
-  // 6. Sort candidates by score (descending)
-  candidates.sort((a, b) => b.score - a.score)
+  // 6. Sort candidates to prioritize users with fewer options, then by score and overlap length
+  candidates.sort((a, b) => {
+    const minOptionsA = Math.min(candidateCounts.get(a.userA.userId) || 0, candidateCounts.get(a.userB.userId) || 0)
+    const minOptionsB = Math.min(candidateCounts.get(b.userA.userId) || 0, candidateCounts.get(b.userB.userId) || 0)
+
+    if (minOptionsA !== minOptionsB) return minOptionsA - minOptionsB
+    if (b.score !== a.score) return b.score - a.score
+    return b.overlapMinutes - a.overlapMinutes
+  })
 
   // 7. Greedy matching - each user can only be matched once
   const matchedUsers = new Set<string>()
   const finalMatches: Omit<Match, "id" | "created_at">[] = []
+  let fallbackMatches = 0
 
   for (const candidate of candidates) {
     const { userA, userB, overlappingSlot } = candidate
@@ -219,9 +360,88 @@ export async function runMatching(supabaseAdmin: {
     matchedUsers.add(userB.userId)
   }
 
+  // 8. Fallback pass: match remaining users with closest-in-time slots (even without full overlap)
+  const unmatchedUsers = users.filter((u) => !matchedUsers.has(u.userId))
+
+  if (unmatchedUsers.length > 1) {
+    const relaxedCandidates: CandidatePair[] = []
+    const relaxedCounts = new Map<string, number>()
+
+    for (let i = 0; i < unmatchedUsers.length; i++) {
+      for (let j = i + 1; j < unmatchedUsers.length; j++) {
+        const userA = unmatchedUsers[i]
+        const userB = unmatchedUsers[j]
+
+        const relaxedSlot = findRelaxedSlot(userA.slots, userB.slots)
+        if (!relaxedSlot) continue
+
+        const interestScore = calculateInterestScore(userA.profile.interests || [], userB.profile.interests || [])
+        const giftScore = calculateInterestScore(
+          parseGiftPreferences(userA.profile.gift_preferences),
+          parseGiftPreferences(userB.profile.gift_preferences),
+        )
+
+        const overlapFactor = relaxedSlot.minutes > 0 ? Math.min(relaxedSlot.minutes / 90, 1) : 0
+        const gapPenalty = Math.min(relaxedSlot.gapMinutes / 180, 1) // penalize >3h gaps
+        const datePenalty = Math.min(relaxedSlot.dateDiffMinutes / (60 * 24 * 3), 1) // penalize >3 days apart
+        const timeScore = overlapFactor > 0 ? overlapFactor : 1 - gapPenalty
+        const campusBonus = relaxedSlot.campusMatch ? 0.1 : 0
+
+        const score = interestScore * 0.45 + giftScore * 0.2 + timeScore * 0.25 + campusBonus - datePenalty * 0.1
+
+        relaxedCandidates.push({
+          userA,
+          userB,
+          score,
+          overlapMinutes: relaxedSlot.minutes,
+          campusMatch: relaxedSlot.campusMatch,
+          overlappingSlot: {
+            date: relaxedSlot.date,
+            start: relaxedSlot.start,
+            end: relaxedSlot.end,
+            location: relaxedSlot.location || "Koordinasyon gerekli",
+          },
+        })
+
+        relaxedCounts.set(userA.userId, (relaxedCounts.get(userA.userId) || 0) + 1)
+        relaxedCounts.set(userB.userId, (relaxedCounts.get(userB.userId) || 0) + 1)
+      }
+    }
+
+    relaxedCandidates.sort((a, b) => {
+      const minOptionsA = Math.min(relaxedCounts.get(a.userA.userId) || 0, relaxedCounts.get(a.userB.userId) || 0)
+      const minOptionsB = Math.min(relaxedCounts.get(b.userA.userId) || 0, relaxedCounts.get(b.userB.userId) || 0)
+
+      if (minOptionsA !== minOptionsB) return minOptionsA - minOptionsB
+      if (b.score !== a.score) return b.score - a.score
+      return b.overlapMinutes - a.overlapMinutes
+    })
+
+    for (const candidate of relaxedCandidates) {
+      const { userA, userB, overlappingSlot } = candidate
+      if (matchedUsers.has(userA.userId) || matchedUsers.has(userB.userId)) continue
+
+      const match: Omit<Match, "id" | "created_at"> = {
+        user_a: userA.userId,
+        user_b: userB.userId,
+        meeting_date: overlappingSlot.date,
+        meeting_start: overlappingSlot.start,
+        meeting_end: overlappingSlot.end,
+        meeting_location: overlappingSlot.location,
+        meeting_code: generateMeetingCode(),
+        status: "pending",
+      }
+
+      finalMatches.push(match)
+      matchedUsers.add(userA.userId)
+      matchedUsers.add(userB.userId)
+      fallbackMatches++
+    }
+  }
+
   console.log(`[Matching] Created ${finalMatches.length} matches`)
 
-  const summary = `Matching complete: ${users.length} users, ${candidates.length} candidate pairs, ${finalMatches.length} final matches, ${users.length - matchedUsers.size} unmatched users`
+  const summary = `Matching complete: ${users.length} users, ${candidates.length} candidate pairs, ${finalMatches.length} final matches (${fallbackMatches} fallback), ${users.length - matchedUsers.size} unmatched users`
 
   return { matches: finalMatches, summary }
 }

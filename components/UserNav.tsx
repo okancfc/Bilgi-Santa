@@ -12,10 +12,23 @@ interface UserNavProps {
 export function UserNav({ userName }: UserNavProps) {
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
+  const [loggingOut, setLoggingOut] = useState(false)
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push("/")
+    if (loggingOut) return
+    setLoggingOut(true)
+    try {
+      // Clear client session
+      await supabase.auth.signOut()
+      // Clear server httpOnly cookies
+      await fetch("/api/auth/logout", { method: "POST" })
+    } catch (error) {
+      console.error("Logout error:", error)
+    } finally {
+      setIsOpen(false)
+      // Full reload to ensure middleware sees cleared cookies
+      window.location.href = "/"
+    }
   }
 
   return (
@@ -99,9 +112,10 @@ export function UserNav({ userName }: UserNavProps) {
 
                   <button
                     onClick={handleLogout}
-                    className="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-red-500/10 transition-colors"
+                    disabled={loggingOut}
+                    className="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-60"
                   >
-                    Çıkış Yap
+                    {loggingOut ? "Çıkış Yapılıyor..." : "Çıkış Yap"}
                   </button>
                 </div>
               </>

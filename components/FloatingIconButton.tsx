@@ -51,7 +51,7 @@ export function FloatingIconButton({ href, imageUrl, altText = "Icon", external 
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className="fixed top-6 left-6 z-50 group"
+        className="fixed bottom-6 left-6 md:bottom-8 md:left-8 z-40 group"
         aria-label={altText}
       >
         {buttonContent}
@@ -63,7 +63,7 @@ export function FloatingIconButton({ href, imageUrl, altText = "Icon", external 
   return (
     <a
       href={href}
-      className="fixed top-6 left-6 z-50 group"
+      className="fixed bottom-6 left-6 md:bottom-8 md:left-8 z-40 group"
       aria-label={altText}
     >
       {buttonContent}
