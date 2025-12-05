@@ -6,7 +6,7 @@ export function Hero() {
     <section className="relative min-h-[90vh] flex flex-col items-center justify-start pb-20 overflow-hidden">
       <div className="relative w-[100vw] ml-[calc(50%-50vw)] h-60 mb-8 overflow-hidden">
         <Image
-          src="/hero-bg2.png"
+          src="/hero-bg2-min.png"
           alt="Hero Background"
           fill
           priority
