@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { MemoryUploader } from "@/components/MemoryUploader"
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -236,7 +237,7 @@ export default function ProfilePage() {
       <StarsBackground />
       <UserNav userName={profile.name} />
 
-      <div className="relative z-10 pt-24 pb-12 px-4">
+      <div className="relative z-10 pt-24 pb-12 px-4 space-y-8">
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-8">
             <h1 className="font-heading text-3xl md:text-4xl font-bold gradient-text mb-2">Profilini Tamamla</h1>
@@ -443,6 +444,13 @@ export default function ProfilePage() {
               )}
             </Button>
           </form>
+        </div>
+
+        <div className="max-w-2xl mx-auto">
+          <MemoryUploader
+            title="Buluşma Anını Yükle"
+            description="Eşleşmenle birlikte tek bir fotoğraf paylaşılabilir. Kare formatında yükle, Anılar akışında gözüksün."
+          />
         </div>
       </div>
     </main>

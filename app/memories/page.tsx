@@ -1,5 +1,6 @@
 "use client"
 
+import type { CSSProperties } from "react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabaseClient"
@@ -34,6 +35,16 @@ export default function MemoriesPage() {
   const [lightbox, setLightbox] = useState<{ url: string; caption?: string | null; user_name?: string } | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
+  const firstName = (name?: string | null) => {
+    if (!name) return "Anonim"
+    return name.trim().split(/\s+/)[0]
+  }
+
+  const scrollContainerStyle: CSSProperties = {
+    scrollbarWidth: "none",
+    msOverflowStyle: "none",
+  }
+
   useEffect(() => {
     const loadUser = async () => {
       const {
@@ -48,7 +59,7 @@ export default function MemoriesPage() {
       setUserId(user.id)
 
       const { data: profile } = await supabase.from("profiles").select("name").eq("user_id", user.id).single()
-      setUserName(profile?.name || user.email?.split("@")[0] || "Santa")
+      setUserName(firstName(profile?.name || user.email?.split("@")[0] || "Santa"))
 
       // match için partner bilgisi
       const matchResponse = await fetch("/api/match")
@@ -56,7 +67,7 @@ export default function MemoriesPage() {
         const matchData = (await matchResponse.json()) as { otherProfile: { user_id: string; name: string | null } | null }
         if (matchData?.otherProfile) {
           setPartnerId(matchData.otherProfile.user_id)
-          setPartnerName(matchData.otherProfile.name || "Eşin")
+          setPartnerName(firstName(matchData.otherProfile.name || "Eşin"))
         }
       }
 
@@ -251,73 +262,9 @@ export default function MemoriesPage() {
 
       <div className="relative z-10 pt-24 pb-16 px-4">
         <div className="max-w-5xl mx-auto space-y-6">
-          <div className="bg-dark-card border border-border rounded-2xl p-5 md:p-6">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-              <div>
-                <p className="text-xs uppercase tracking-wide text-gold-accent">Buluşma Anıları</p>
-                <h1 className="font-heading text-2xl md:text-3xl font-bold">Fotoğraf yükle ve paylaş</h1>
-                <p className="text-sm text-muted-foreground">Kare fotoğraf olarak akışta görünecek. İstersen kısa bir not ekle.</p>
-                <p className="text-xs text-muted-foreground mt-1">{meetingGateText}</p>
-              </div>
-            </div>
+          {/* Upload form kaldırıldı - artık Anasayfa ve Profil üzerinden yükleniyor */}
 
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-[1.2fr_1fr] gap-4">
-              <div className="space-y-2">
-                <label className="text-sm text-muted-foreground">Fotoğraf</label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex-1 px-3 py-2 rounded-lg border border-border bg-secondary hover:bg-secondary/80 transition-colors text-foreground text-left"
-                  >
-                    {memoryFile ? memoryFile.name : "Fotoğraf Seç"}
-                  </button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => setMemoryFile(e.target.files?.[0] || null)}
-                  />
-                  <button
-                    type="button"
-                    disabled={!memoryFile || uploadingMemory}
-                    onClick={handleUploadMemory}
-                    className="px-4 py-2 rounded-lg bg-bilgi-red text-white font-semibold shadow hover:shadow-bilgi-red/40 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {uploadingMemory ? "Yükleniyor..." : "Yükle"}
-                  </button>
-                </div>
-                <p className="text-xs text-muted-foreground line-clamp-1">
-                  {memoryFile ? memoryFile.name : "Henüz fotoğraf seçilmedi"}
-                </p>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm text-muted-foreground">Kısa not (opsiyonel)</label>
-                <textarea
-                  value={memoryCaption}
-                  onChange={(e) => setMemoryCaption(e.target.value.slice(0, 200))}
-                  rows={3}
-                  className="w-full px-3 py-2 rounded-lg bg-dark-bg border border-border text-sm text-foreground resize-none"
-                  placeholder="Günün nasıl geçti?"
-                />
-              </div>
-            </div>
-          </div>
-
-          {memoryMessage && (
-            <div
-              className={`p-4 rounded-lg ${
-                memoryMessage.type === "success"
-                  ? "bg-green-500/10 border border-green-500/30 text-green-400"
-                  : "bg-red-500/10 border border-red-500/30 text-red-400"
-              }`}
-            >
-              {memoryMessage.text}
-            </div>
-          )}
-
-          <div className="bg-dark-card border border-border rounded-2xl p-5 md:p-6">
+          <div className="">
             <div className="mb-4">
               <p className="text-xs uppercase tracking-wide text-gold-accent">Keşfet</p>
               <h3 className="font-heading text-xl font-bold">Anı Akışı</h3>
@@ -330,65 +277,67 @@ export default function MemoriesPage() {
                 Henüz paylaşım yok. İlk fotoğrafı sen yükle!
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {memories.map((memory) => (
-                  <div
-                    key={memory.id}
-                    className="relative group overflow-hidden rounded-xl border border-border bg-dark-bg/60"
-                  >
+              <div className="max-h-[70vh] overflow-y-auto no-scrollbar" style={scrollContainerStyle}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-10 sm:gap-6">
+                  {memories.map((memory) => (
                     <div
-                      className="aspect-square w-full overflow-hidden cursor-zoom-in"
-                      role="button"
-                      tabIndex={0}
-                      onClick={() =>
-                        setLightbox({ url: memory.image_url, caption: memory.caption, user_name: getDisplayName(memory) })
-                      }
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault()
+                      key={memory.id}
+                      className="relative group overflow-hidden rounded-xl border border-border bg-dark-bg/60"
+                    >
+                      <div
+                        className="aspect-square w-full overflow-hidden cursor-zoom-in"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() =>
                           setLightbox({ url: memory.image_url, caption: memory.caption, user_name: getDisplayName(memory) })
                         }
-                      }}
-                    >
-                      <img
-                        src={memory.image_url}
-                        alt={memory.caption || "Buluşma anısı"}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
-                    </div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/40 to-transparent opacity-90 group-hover:opacity-100 transition-opacity" />
-                    <div className="absolute inset-x-0 bottom-0 p-3 flex items-end justify-between gap-2">
-                      <div className="flex-1 min-w-0 space-y-1">
-                        <p className="text-sm font-semibold text-white truncate">{getDisplayName(memory)}</p>
-                        {memory.caption && <p className="text-xs text-gray-200 line-clamp-2 break-words">{memory.caption}</p>}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => toggleLike(memory.id)}
-                        className={`flex-shrink-0 flex items-center gap-1 px-3 py-2 rounded-full border text-sm transition-colors whitespace-nowrap ${
-                          memory.liked_by_me
-                            ? "bg-bilgi-red/25 border-bilgi-red/20 text-white"
-                            : "bg-dark-bg/20 border-border text-white"
-                        }`}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault()
+                            setLightbox({ url: memory.image_url, caption: memory.caption, user_name: getDisplayName(memory) })
+                          }
+                        }}
                       >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill={memory.liked_by_me ? "currentColor" : "none"}
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
+                        <img
+                          src={memory.image_url}
+                          alt={memory.caption || "Buluşma anısı"}
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+                      </div>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/40 to-transparent opacity-90 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                      <div className="absolute inset-x-0 bottom-0 p-3 flex items-end justify-between gap-2">
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <p className="text-sm font-semibold text-white truncate">{getDisplayName(memory)}</p>
+                          {memory.caption && <p className="text-xs text-gray-200 line-clamp-2 break-words">{memory.caption}</p>}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => toggleLike(memory.id)}
+                          className={`flex-shrink-0 flex items-center gap-1 px-3 py-2 rounded-full border text-sm transition-colors whitespace-nowrap ${
+                            memory.liked_by_me
+                              ? "bg-bilgi-red/25 border-bilgi-red/20 text-white"
+                              : "bg-dark-bg/20 border-border text-white"
+                          }`}
                         >
-                          <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
-                        </svg>
-                        <span className="w-3">{memory.likes_count}</span>
-                      </button>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill={memory.liked_by_me ? "currentColor" : "none"}
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+                          </svg>
+                          <span className="w-3">{memory.likes_count}</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
           </div>

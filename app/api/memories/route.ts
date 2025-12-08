@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { createSupabaseAdminClient, createSupabaseServerClient } from "@/lib/supabaseServer"
 
+const getFirstName = (name?: string | null) => (name ? name.trim().split(/\s+/)[0] : "Anonim Santa")
+
 export async function GET() {
   try {
     const supabase = await createSupabaseServerClient()
@@ -31,7 +33,7 @@ export async function GET() {
     if (userIds.length > 0) {
       const { data: profiles } = await admin.from("profiles").select("user_id, name").in("user_id", userIds)
       profiles?.forEach((p) => {
-        profileMap.set((p as { user_id: string }).user_id, (p as { name?: string | null }).name || "Anonim Santa")
+        profileMap.set((p as { user_id: string }).user_id, getFirstName((p as { name?: string | null }).name))
       })
     }
 
@@ -56,7 +58,7 @@ export async function GET() {
         caption: m.caption,
         created_at: m.created_at,
         likes_count: m.likes_count || 0,
-        user_name: profileMap.get(m.user_id) || "Anonim Santa",
+        user_name: getFirstName(profileMap.get(m.user_id) || "Anonim Santa"),
         liked_by_me: likedIds.includes(m.id),
       })) || []
 
@@ -108,7 +110,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       item: {
         ...data,
-        user_name: profile?.name || "Anonim Santa",
+        user_name: getFirstName(profile?.name || "Anonim Santa"),
         liked_by_me: false,
       },
     })

@@ -9,6 +9,7 @@ import { HowWeMeetBanner } from "@/components/HowWeMeetBanner"
 import { StepsSection } from "@/components/StepsSection"
 import { Footer } from "@/components/Footer"
 import { UserNav } from "@/components/UserNav"
+import { MemoryUploader } from "@/components/MemoryUploader"
 
 type AuthState = "loading" | "guest" | "authed"
 
@@ -395,6 +396,15 @@ export function HomeContent() {
               Anılar Sayfasına Git
             </Link>
           </div>
+        </div>
+      </section>
+
+      <section className="pb-12 px-4">
+        <div className="max-w-6xl mx-auto">
+          <MemoryUploader
+            title="Anını Yükle"
+            description="Buluşma gününden kareyi buradan ekle, eşleşmenle tek fotoğraf paylaşılabilir."
+          />
         </div>
       </section>
 

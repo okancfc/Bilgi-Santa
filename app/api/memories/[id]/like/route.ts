@@ -26,21 +26,25 @@ export async function POST(request: Request, { params }: { params: { id?: string
 
     const admin = createSupabaseAdminClient()
 
-    const { data: existingLike } = await admin
+    const { data: deleted, error: deleteError } = await admin
       .from("memory_likes")
-      .select("id")
+      .delete()
       .eq("memory_id", memoryId)
       .eq("user_id", user.id)
-      .maybeSingle()
+      .select("id")
+
+    if (deleteError) {
+      console.error("Memory unlike error:", deleteError)
+      return NextResponse.json({ error: "Failed to like memory" }, { status: 500 })
+    }
 
     let liked = false
 
-    if (existingLike) {
-      await admin.from("memory_likes").delete().eq("id", existingLike.id)
-    } else {
+    if (!deleted || deleted.length === 0) {
       const { error: likeError } = await admin
         .from("memory_likes")
-        .insert({ memory_id: memoryId, user_id: user.id })
+        .upsert({ memory_id: memoryId, user_id: user.id }, { onConflict: "memory_id,user_id" })
+
       if (likeError) {
         console.error("Memory like error:", likeError)
         return NextResponse.json({ error: "Failed to like memory" }, { status: 500 })
