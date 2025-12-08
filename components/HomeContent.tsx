@@ -23,6 +23,7 @@ export function HomeContent() {
   const [matchData, setMatchData] = useState<MatchResponse | null>(null)
   const [availabilityCount, setAvailabilityCount] = useState<number>(0)
   const [userName, setUserName] = useState<string>("")
+  const [now, setNow] = useState<number>(() => Date.now())
 
   useEffect(() => {
     let isMounted = true
@@ -68,8 +69,11 @@ export function HomeContent() {
 
     loadData()
 
+    const interval = setInterval(() => setNow(Date.now()), 60000)
+
     return () => {
       isMounted = false
+      clearInterval(interval)
     }
   }, [])
 
@@ -92,6 +96,30 @@ export function HomeContent() {
   const formatTimeRange = (start?: string | null, end?: string | null) => {
     if (!start || !end) return "Saat bilgisi bekleniyor"
     return `${start.substring(0, 5)} - ${end.substring(0, 5)}`
+  }
+
+  const meetingDateTime = useMemo(() => {
+    if (!matchData?.match?.meeting_date || !matchData.match.meeting_start) return null
+    const start = matchData.match.meeting_start.length === 5 ? `${matchData.match.meeting_start}:00` : matchData.match.meeting_start
+    return new Date(`${matchData.match.meeting_date}T${start}`)
+  }, [matchData?.match?.meeting_date, matchData?.match?.meeting_start])
+
+  const revealAt = useMemo(() => {
+    if (!meetingDateTime) return null
+    return new Date(meetingDateTime.getTime() - 24 * 60 * 60 * 1000)
+  }, [meetingDateTime])
+
+  const emailRevealed = revealAt ? now >= revealAt.getTime() : false
+  const msUntilReveal = revealAt ? Math.max(0, revealAt.getTime() - now) : null
+
+  const formatCountdown = (ms: number) => {
+    const totalMinutes = Math.ceil(ms / 60000)
+    const days = Math.floor(totalMinutes / (60 * 24))
+    const hours = Math.floor((totalMinutes % (60 * 24)) / 60)
+    const minutes = totalMinutes % 60
+    if (days > 0) return `${days} gün ${hours} saat`
+    if (hours > 0) return `${hours} saat ${minutes} dk`
+    return `${minutes} dk`
   }
 
   if (authState === "loading") {
@@ -244,7 +272,7 @@ export function HomeContent() {
                     <span className="w-6 h-6 rounded-full bg-bilgi-red/20 flex items-center justify-center text-xs font-bold">
                       !
                     </span>
-                    Eşin: {matchData.otherProfile?.name || "Bilinmiyor"}
+                    Eşin: Anonim Santa
                   </p>
                   {matchData.otherProfile?.interests?.length ? (
                     <div className="flex flex-wrap gap-2 mt-2">
@@ -259,6 +287,24 @@ export function HomeContent() {
                     </div>
                   ) : (
                     <p className="text-xs text-muted-foreground mt-2">İlgi alanları henüz eklenmemiş.</p>
+                  )}
+                </div>
+
+                <div className="bg-dark-bg/60 border border-border rounded-lg p-3">
+                  <p className="text-xs text-muted-foreground mb-1">İletişim için e-posta</p>
+                  {emailRevealed ? (
+                    <p className="font-medium">
+                      {matchData.otherProfile?.email || "E-posta bulunamadı"}
+                    </p>
+                  ) : (
+                    <div className="space-y-1">
+                      <p className="font-medium text-gold-accent">
+                        {msUntilReveal !== null ? `E-posta ${formatCountdown(msUntilReveal)} sonra açılacak` : "E-posta için zaman bilgisi bekleniyor"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Buluşmadan 24 saat önce eşleştiğin kişinin e-postasını görebileceksin.
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>

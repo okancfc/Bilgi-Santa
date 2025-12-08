@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Profile, AvailabilitySlot, Match } from "./supabaseClient"
 
 // Types for matching algorithm
@@ -22,7 +23,7 @@ interface CandidatePair {
 }
 
 /**
- * Generate a unique meeting code like "BILGI-7A9X"
+ * Generate a unique meeting code like "BILGI-XXXXXX"
  */
 function generateMeetingCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" // Avoid confusing characters
@@ -234,14 +235,9 @@ function findRelaxedSlot(
  * 4. Greedily assigns matches
  * 5. Returns match data to be inserted
  */
-export async function runMatching(supabaseAdmin: {
-  from: (table: string) => {
-    select: (columns: string) => {
-      eq?: (column: string, value: unknown) => Promise<{ data: unknown[]; error: unknown }>
-    } & Promise<{ data: unknown[]; error: unknown }>
-    insert: (data: unknown) => Promise<{ data: unknown; error: unknown }>
-  }
-}): Promise<{ matches: Omit<Match, "id" | "created_at">[]; summary: string }> {
+export async function runMatching(
+  supabaseAdmin: SupabaseClient,
+): Promise<{ matches: Omit<Match, "id" | "created_at">[]; summary: string }> {
   // 1. Load all active profiles
   const { data: profiles, error: profilesError } = await supabaseAdmin
     .from("profiles")

@@ -59,6 +59,22 @@ export const CAMPUS_OPTIONS = [
   { value: "dolapdere", label: "Dolapdere" },
 ]
 
+export const SANTRAL_CAMPUS = { value: "santralistanbul", label: "santralistanbul" }
+
+export const CAMPUS_LOCATION_OPTIONS = {
+  santralistanbul: [
+    { value: "enerji-muzesi-onu", label: "Enerji Müzesi Önü" },
+    { value: "kutuphane-onu", label: "Kütüphane Önü" },
+    { value: "radyo-bilgi-yani", label: "Radyo Bilgi Yanı" },
+  ]
+}
+
+export const HOURLY_TIME_OPTIONS = Array.from({ length: 13 }, (_item, index) => {
+  const hour = 9 + index
+  const value = `${String(hour).padStart(2, "0")}:00`
+  return { value, label: value }
+})
+
 export const CLASS_YEARS = [
   { value: 1, label: "1. Sınıf" },
   { value: 2, label: "2. Sınıf" },

@@ -73,7 +73,7 @@ export function HowWeMeetBanner() {
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Buluşma Kartı</p>
-                      <p className="font-heading font-bold text-gold-accent">BILGI-7A9X</p>
+                      <p className="font-heading font-bold text-gold-accent">BILGI-XXXXXX</p>
                     </div>
                   </div>
 

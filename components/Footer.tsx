@@ -16,8 +16,6 @@ export function Footer() {
             {/* Logo and info */}
             <div className="text-center md:text-left">
               <h3 className="font-heading text-xl font-bold gradient-text mb-2">Bilgi Santa</h3>
-              <p className="text-muted-foreground text-sm">İstanbul Bilgi Üniversitesi Hediyeleşme Platformu</p>
-              <p className="text-muted-foreground text-xs mt-1">© 2025 Tüm hakları saklıdır.</p>
             </div>
 
             {/* Links */}

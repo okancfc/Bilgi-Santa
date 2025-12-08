@@ -36,7 +36,7 @@ export function Hero() {
 
         {/* Description */}
         <p className="text-lg text-muted-foreground/80 max-w-2xl mx-auto mb-10 leading-relaxed">
-          İstanbul Bilgi Üniversitesi öğrencileri için anonim hediyeleşme platformu. Yeni arkadaşlıklar
+          İstanbul Bilgi Üniversitesi öğrencileri için hediyeleşme platformu. Yeni arkadaşlıklar
           kur, sürpriz hediyeler al ve kampüste keyifli anılar biriktir!
         </p>
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase, type Profile, type Match } from "@/lib/supabaseClient"
 import { StarsBackground } from "@/components/StarsBackground"
@@ -18,6 +18,7 @@ export default function MatchPage() {
   const [user, setUser] = useState<{ id: string } | null>(null)
   const [userName, setUserName] = useState<string>("")
   const [matchData, setMatchData] = useState<MatchData | null>(null)
+  const [now, setNow] = useState<number>(() => Date.now())
 
   useEffect(() => {
     const loadMatch = async () => {
@@ -58,6 +59,9 @@ export default function MatchPage() {
     }
 
     loadMatch()
+
+    const interval = setInterval(() => setNow(Date.now()), 60000)
+    return () => clearInterval(interval)
   }, [router])
 
   const formatDate = (dateStr: string) => {
@@ -72,6 +76,30 @@ export default function MatchPage() {
 
   const formatTime = (timeStr: string) => {
     return timeStr.substring(0, 5)
+  }
+
+  const meetingDateTime = useMemo(() => {
+    if (!matchData?.match?.meeting_date || !matchData.match.meeting_start) return null
+    const start = matchData.match.meeting_start.length === 5 ? `${matchData.match.meeting_start}:00` : matchData.match.meeting_start
+    return new Date(`${matchData.match.meeting_date}T${start}`)
+  }, [matchData?.match?.meeting_date, matchData?.match?.meeting_start])
+
+  const revealAt = useMemo(() => {
+    if (!meetingDateTime) return null
+    return new Date(meetingDateTime.getTime() - 24 * 60 * 60 * 1000)
+  }, [meetingDateTime])
+
+  const emailRevealed = revealAt ? now >= revealAt.getTime() : false
+  const msUntilReveal = revealAt ? Math.max(0, revealAt.getTime() - now) : null
+
+  const formatCountdown = (ms: number) => {
+    const totalMinutes = Math.ceil(ms / 60000)
+    const days = Math.floor(totalMinutes / (60 * 24))
+    const hours = Math.floor((totalMinutes % (60 * 24)) / 60)
+    const minutes = totalMinutes % 60
+    if (days > 0) return `${days} gün ${hours} saat`
+    if (hours > 0) return `${hours} saat ${minutes} dk`
+    return `${minutes} dk`
   }
 
   if (loading) {
@@ -94,7 +122,9 @@ export default function MatchPage() {
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-8">
             <h1 className="font-heading text-3xl md:text-4xl font-bold gradient-text mb-2">Eşleşmen</h1>
-            <p className="text-muted-foreground">Buluşma detayların ve eşinin ilgi alanları</p>
+            <p className="text-muted-foreground">
+              Buluşma detayların, eşinin ilgi alanları ve buluşmadan 24 saat önce e-postası burada.
+            </p>
           </div>
 
           {!matchData ? (
@@ -226,6 +256,24 @@ export default function MatchPage() {
                   </svg>
                   Eşinin İlgi Alanları
                 </h2>
+
+                <div className="bg-dark-bg/60 border border-border rounded-lg p-4 mb-6">
+                  <p className="text-xs text-muted-foreground mb-1">İletişim için e-posta</p>
+                  {emailRevealed ? (
+                    <p className="font-medium">{matchData.otherProfile.email || "E-posta bulunamadı"}</p>
+                  ) : (
+                    <div className="space-y-1">
+                      <p className="font-medium text-gold-accent">
+                        {msUntilReveal !== null
+                          ? `E-posta ${formatCountdown(msUntilReveal)} sonra açılacak`
+                          : "E-posta için zaman bilgisi bekleniyor"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Buluşmadan 24 saat önce e-posta adresi burada görünecek.
+                      </p>
+                    </div>
+                  )}
+                </div>
 
                 {matchData.otherProfile.interests && matchData.otherProfile.interests.length > 0 ? (
                   <div className="flex flex-wrap gap-2 mb-6">

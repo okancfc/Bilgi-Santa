@@ -5,12 +5,42 @@ import type React from "react"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase, type AvailabilitySlot } from "@/lib/supabaseClient"
-import { CAMPUS_OPTIONS } from "@/lib/constants"
+import { CAMPUS_LOCATION_OPTIONS, HOURLY_TIME_OPTIONS, SANTRAL_CAMPUS } from "@/lib/constants"
 import { StarsBackground } from "@/components/StarsBackground"
 import { UserNav } from "@/components/UserNav"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+
+const getAllowedDateWindow = () => {
+  const now = new Date()
+  const currentYear = now.getFullYear()
+  const decemberEnd = new Date(`${currentYear}-12-31T23:59:59`)
+  const targetYear = now > decemberEnd ? currentYear + 1 : currentYear
+
+  return {
+    startDate: `${targetYear}-12-17`,
+    endDate: `${targetYear}-12-31`,
+  }
+}
+
+const getEndTimeFromStart = (startTime: string) => {
+  const [hours, minutes] = startTime.split(":").map((part) => Number.parseInt(part, 10))
+  const endHours = hours + 1
+  return `${String(endHours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`
+}
+
+const getLocationOptions = (campus?: string | null) => {
+  if (!campus) return []
+  const key = campus as keyof typeof CAMPUS_LOCATION_OPTIONS
+  return CAMPUS_LOCATION_OPTIONS[key] || []
+}
+
+const resolveLocationLabel = (campus: string | null | undefined, value: string | null | undefined) => {
+  if (!value) return ""
+  const match = getLocationOptions(campus).find((item) => item.value === value || item.label === value)
+  return match?.label || value
+}
 
 export default function AvailabilityPage() {
   const router = useRouter()
@@ -19,11 +49,12 @@ export default function AvailabilityPage() {
   const [user, setUser] = useState<{ id: string } | null>(null)
   const [userName, setUserName] = useState<string>("")
   const [slots, setSlots] = useState<AvailabilitySlot[]>([])
+  const { startDate, endDate } = getAllowedDateWindow()
+  const defaultStart = HOURLY_TIME_OPTIONS[0]?.value || "09:00"
   const [newSlot, setNewSlot] = useState({
-    slot_date: "",
-    start_time: "",
-    end_time: "",
-    campus: "",
+    slot_date: startDate,
+    start_time: defaultStart,
+    end_time: getEndTimeFromStart(defaultStart),
     location: "",
   })
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
@@ -73,14 +104,28 @@ export default function AvailabilityPage() {
     e.preventDefault()
     if (!user) return
 
-    // Validate times
-    if (newSlot.start_time >= newSlot.end_time) {
-      setMessage({ type: "error", text: "Bitiş saati başlangıç saatinden sonra olmalıdır." })
+    const dateInRange = newSlot.slot_date >= startDate && newSlot.slot_date <= endDate
+    if (!dateInRange) {
+      setMessage({ type: "error", text: "Tarih yalnızca 17-31 Aralık aralığında seçilebilir." })
+      return
+    }
+
+    const validTime = HOURLY_TIME_OPTIONS.some((option) => option.value === newSlot.start_time)
+    if (!validTime) {
+      setMessage({ type: "error", text: "Saat seçimi 09:00 - 21:00 aralığından yapılmalıdır." })
+      return
+    }
+
+    if (!newSlot.location) {
+      setMessage({ type: "error", text: "Konum seçimi zorunludur." })
       return
     }
 
     setSaving(true)
     setMessage(null)
+
+    const calculatedEnd = getEndTimeFromStart(newSlot.start_time)
+    const locationLabel = resolveLocationLabel(SANTRAL_CAMPUS.value, newSlot.location)
 
     try {
       const { data, error } = await supabase
@@ -89,9 +134,9 @@ export default function AvailabilityPage() {
           user_id: user.id,
           slot_date: newSlot.slot_date,
           start_time: newSlot.start_time,
-          end_time: newSlot.end_time,
-          campus: newSlot.campus || null,
-          location: newSlot.location || null,
+          end_time: calculatedEnd,
+          campus: SANTRAL_CAMPUS.value,
+          location: locationLabel || null,
         })
         .select()
         .single()
@@ -100,10 +145,9 @@ export default function AvailabilityPage() {
 
       setSlots([...slots, data])
       setNewSlot({
-        slot_date: "",
-        start_time: "",
-        end_time: "",
-        campus: "",
+        slot_date: startDate,
+        start_time: defaultStart,
+        end_time: getEndTimeFromStart(defaultStart),
         location: "",
       })
       setMessage({ type: "success", text: "Müsaitlik eklendi!" })
@@ -201,29 +245,40 @@ export default function AvailabilityPage() {
                     value={newSlot.slot_date}
                     onChange={(e) => setNewSlot({ ...newSlot, slot_date: e.target.value })}
                     required
-                    min={new Date().toISOString().split("T")[0]}
+                    min={startDate}
+                    max={endDate}
                     className="mt-1 bg-dark-bg border-border"
                   />
                 </div>
                 <div>
                   <Label htmlFor="start_time">Başlangıç</Label>
-                  <Input
+                  <select
                     id="start_time"
-                    type="time"
                     value={newSlot.start_time}
-                    onChange={(e) => setNewSlot({ ...newSlot, start_time: e.target.value })}
+                    onChange={(e) =>
+                      setNewSlot({
+                        ...newSlot,
+                        start_time: e.target.value,
+                        end_time: getEndTimeFromStart(e.target.value),
+                      })
+                    }
                     required
-                    className="mt-1 bg-dark-bg border-border"
-                  />
+                    className="mt-1 w-full px-3 py-2 bg-dark-bg border border-border rounded-md text-foreground"
+                  >
+                    {HOURLY_TIME_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <Label htmlFor="end_time">Bitiş</Label>
                   <Input
                     id="end_time"
-                    type="time"
+                    type="text"
                     value={newSlot.end_time}
-                    onChange={(e) => setNewSlot({ ...newSlot, end_time: e.target.value })}
-                    required
+                    disabled
                     className="mt-1 bg-dark-bg border-border"
                   />
                 </div>
@@ -231,32 +286,27 @@ export default function AvailabilityPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="campus">Kampüs</Label>
+                  <Label htmlFor="location">Kampüs İçindeki Konum</Label>
                   <select
-                    id="campus"
-                    value={newSlot.campus}
-                    onChange={(e) => setNewSlot({ ...newSlot, campus: e.target.value })}
+                    id="location"
+                    value={newSlot.location}
+                    onChange={(e) => setNewSlot({ ...newSlot, location: e.target.value })}
                     className="mt-1 w-full px-3 py-2 bg-dark-bg border border-border rounded-md text-foreground"
+                    required
                   >
-                    <option value="">Seçin (Opsiyonel)</option>
-                    {CAMPUS_OPTIONS.map((campus) => (
-                      <option key={campus.value} value={campus.value}>
-                        {campus.label}
+                    <option value="">Seçin</option>
+                    {getLocationOptions(SANTRAL_CAMPUS.value).map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
                       </option>
                     ))}
                   </select>
                 </div>
-                <div>
-                  <Label htmlFor="location">Konum Detayı</Label>
-                  <Input
-                    id="location"
-                    type="text"
-                    value={newSlot.location}
-                    onChange={(e) => setNewSlot({ ...newSlot, location: e.target.value })}
-                    placeholder="Örn: Kütüphane önü"
-                    className="mt-1 bg-dark-bg border-border"
-                  />
-                </div>
+              </div>
+
+              <div className="rounded-lg border border-border bg-dark-bg/60 p-3 text-sm text-muted-foreground">
+                Bu etkinlik yalnızca <span className="text-foreground font-medium">{SANTRAL_CAMPUS.label}</span> kampüsünde
+                gerçekleşecek. Lütfen kampüs içindeki bir buluşma noktasını seçin.
               </div>
 
               <Button type="submit" disabled={saving} className="btn-bilgi">
@@ -316,12 +366,13 @@ export default function AvailabilityPage() {
                       <p className="font-medium text-foreground">{formatDate(slot.slot_date)}</p>
                       <p className="text-sm text-muted-foreground">
                         {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
-                        {slot.campus && (
-                          <span className="ml-2">
-                            • {CAMPUS_OPTIONS.find((c) => c.value === slot.campus)?.label || slot.campus}
-                          </span>
+                        <span className="ml-2">• {SANTRAL_CAMPUS.label}</span>
+                        {slot.campus && slot.campus !== SANTRAL_CAMPUS.value && (
+                          <span className="ml-2">• {slot.campus}</span>
                         )}
-                        {slot.location && <span className="ml-2">• {slot.location}</span>}
+                        {slot.location && (
+                          <span className="ml-2">• {resolveLocationLabel(slot.campus, slot.location)}</span>
+                        )}
                       </p>
                     </div>
                     <button
