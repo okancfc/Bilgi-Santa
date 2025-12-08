@@ -55,6 +55,24 @@ CREATE TABLE IF NOT EXISTS contact_messages (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Memories (post-meetup photos)
+CREATE TABLE IF NOT EXISTS memories (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  image_url TEXT NOT NULL,
+  caption TEXT,
+  likes_count INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS memory_likes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  memory_id UUID NOT NULL REFERENCES memories(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(memory_id, user_id)
+);
+
 -- App settings table (for countdown, etc.)
 CREATE TABLE IF NOT EXISTS app_settings (
   key TEXT PRIMARY KEY,
@@ -93,12 +111,17 @@ CREATE INDEX IF NOT EXISTS idx_availability_slots_date ON availability_slots(slo
 CREATE INDEX IF NOT EXISTS idx_matches_user_a ON matches(user_a);
 CREATE INDEX IF NOT EXISTS idx_matches_user_b ON matches(user_b);
 CREATE INDEX IF NOT EXISTS idx_matches_code ON matches(meeting_code);
+CREATE INDEX IF NOT EXISTS idx_memories_user_id ON memories(user_id);
+CREATE INDEX IF NOT EXISTS idx_memory_likes_memory_id ON memory_likes(memory_id);
+CREATE INDEX IF NOT EXISTS idx_memory_likes_user_id ON memory_likes(user_id);
 
 -- Row Level Security (RLS) Policies
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE availability_slots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE matches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contact_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE memories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE memory_likes ENABLE ROW LEVEL SECURITY;
 
 -- Profiles policies
 CREATE POLICY "Users can view their own profile" ON profiles
@@ -127,6 +150,29 @@ CREATE POLICY "Users can view their own matches" ON matches
 -- Contact messages policy (anyone can insert, only admins can view)
 CREATE POLICY "Anyone can submit contact messages" ON contact_messages
   FOR INSERT WITH CHECK (true);
+
+-- Memories policies
+CREATE POLICY "Authenticated users can view memories" ON memories
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "Users can insert their own memories" ON memories
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own memories" ON memories
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own memories" ON memories
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- Memory likes policies
+CREATE POLICY "Authenticated users can view memory likes" ON memory_likes
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "Users can like memories" ON memory_likes
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can unlike their likes" ON memory_likes
+  FOR DELETE USING (auth.uid() = user_id);
 
 -- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()

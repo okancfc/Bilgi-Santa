@@ -67,3 +67,19 @@ export interface ContactMessage {
   is_read: boolean
   created_at: string
 }
+
+export interface Memory {
+  id: string
+  user_id: string
+  image_url: string
+  caption: string | null
+  likes_count: number
+  created_at: string
+}
+
+export interface MemoryLike {
+  id: string
+  memory_id: string
+  user_id: string
+  created_at: string
+}

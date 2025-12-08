@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { supabase, type Match, type Profile } from "@/lib/supabaseClient"
 import { Countdown } from "@/components/Countdown"
@@ -17,13 +17,31 @@ interface MatchResponse {
   otherProfile: Profile | null
 }
 
+interface MemoryItem {
+  id: string
+  image_url: string
+  caption: string | null
+  created_at: string
+  likes_count: number
+  user_name: string
+  liked_by_me: boolean
+}
+
 export function HomeContent() {
   const [authState, setAuthState] = useState<AuthState>("loading")
   const [profile, setProfile] = useState<Profile | null>(null)
   const [matchData, setMatchData] = useState<MatchResponse | null>(null)
   const [availabilityCount, setAvailabilityCount] = useState<number>(0)
   const [userName, setUserName] = useState<string>("")
+  const [userId, setUserId] = useState<string>("")
   const [now, setNow] = useState<number>(() => Date.now())
+  const [memories, setMemories] = useState<MemoryItem[]>([])
+  const [memoriesLoading, setMemoriesLoading] = useState(false)
+  const [memoryMessage, setMemoryMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const [memoryCaption, setMemoryCaption] = useState("")
+  const [memoryFile, setMemoryFile] = useState<File | null>(null)
+  const [uploadingMemory, setUploadingMemory] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     let isMounted = true
@@ -38,6 +56,8 @@ export function HomeContent() {
           if (isMounted) setAuthState("guest")
           return
         }
+
+        if (isMounted) setUserId(user.id)
 
         const { data: profileData } = await supabase.from("profiles").select("*").eq("user_id", user.id).single()
         if (isMounted && profileData) {
@@ -120,6 +140,116 @@ export function HomeContent() {
     if (days > 0) return `${days} gün ${hours} saat`
     if (hours > 0) return `${hours} saat ${minutes} dk`
     return `${minutes} dk`
+  }
+
+  // Test için şu an fotoğraf yükleme her zaman açık (normalde buluşma sonrası açılacak)
+  const canUploadMemory = true
+  const memoryGateText = "Test için fotoğraf yükleme şu an açık; buluşma günü kuralı geçici olarak devre dışı."
+
+  const fetchMemories = async () => {
+    setMemoriesLoading(true)
+    try {
+      const response = await fetch("/api/memories")
+      if (!response.ok) {
+        console.error("Memories fetch error:", await response.text())
+        setMemoryMessage({ type: "error", text: "Anılar yüklenemedi." })
+        return
+      }
+      const data = (await response.json()) as { items: MemoryItem[] }
+      setMemories(data.items || [])
+    } catch (error) {
+      console.error("Memories load error:", error)
+      setMemoryMessage({ type: "error", text: "Anılar yüklenirken bir sorun oluştu." })
+    } finally {
+      setMemoriesLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (authState === "authed") {
+      fetchMemories()
+    }
+  }, [authState])
+
+  const handleUploadMemory = async () => {
+    if (!memoryFile) {
+      setMemoryMessage({ type: "error", text: "Lütfen bir fotoğraf seç." })
+      return
+    }
+    setUploadingMemory(true)
+    setMemoryMessage(null)
+
+    try {
+      const ext = memoryFile.name.split(".").pop() || "jpg"
+      const fileName = `${Date.now()}-${Math.floor(Math.random() * 10000)}.${ext}`
+      const filePath = `${userId || "me"}/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from("memories")
+        .upload(filePath, memoryFile, { cacheControl: "3600", upsert: false, contentType: memoryFile.type || "image/jpeg" })
+
+      if (uploadError) {
+        console.error("Memory upload error:", uploadError)
+        setMemoryMessage({
+          type: "error",
+          text: "Fotoğraf yüklenemedi. Supabase 'memories' bucket'ı hazır mı?",
+        })
+        return
+      }
+
+      const { data: publicData } = supabase.storage.from("memories").getPublicUrl(filePath)
+      const publicUrl = publicData.publicUrl
+
+      const response = await fetch("/api/memories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl: publicUrl, caption: memoryCaption.trim() }),
+      })
+
+      if (!response.ok) {
+        console.error("Memory save error:", await response.text())
+        setMemoryMessage({ type: "error", text: "Fotoğraf kaydedilemedi." })
+        return
+      }
+
+      const { item } = (await response.json()) as { item: MemoryItem }
+      setMemories((prev) => [item, ...prev])
+      setMemoryCaption("")
+      setMemoryFile(null)
+      if (fileInputRef.current) fileInputRef.current.value = ""
+      setMemoryMessage({ type: "success", text: "Anın paylaşıldı! 🎉" })
+    } catch (error) {
+      console.error("Memory upload flow error:", error)
+      setMemoryMessage({ type: "error", text: "Fotoğraf yüklenirken bir hata oluştu." })
+    } finally {
+      setUploadingMemory(false)
+    }
+  }
+
+  const toggleLike = async (memoryId: string) => {
+    const current = memories.find((m) => m.id === memoryId)
+    if (!current) return
+
+    const optimistic = { ...current, liked_by_me: !current.liked_by_me, likes_count: current.likes_count + (current.liked_by_me ? -1 : 1) }
+    setMemories((prev) => prev.map((m) => (m.id === memoryId ? optimistic : m)))
+
+    try {
+      const response = await fetch(`/api/memories/${memoryId}/like`, { method: "POST" })
+      if (!response.ok) {
+        throw new Error(await response.text())
+      }
+      const data = (await response.json()) as { liked: boolean; likes_count: number }
+      setMemories((prev) =>
+        prev.map((m) =>
+          m.id === memoryId ? { ...m, liked_by_me: data.liked, likes_count: data.likes_count ?? m.likes_count } : m,
+        ),
+      )
+    } catch (error) {
+      console.error("Like toggle error:", error)
+      // revert
+      setMemories((prev) => prev.map((m) => (m.id === memoryId ? current : m)))
+      setMemoryMessage({ type: "error", text: "Beğeni güncellenemedi." })
+    }
   }
 
   if (authState === "loading") {
@@ -365,6 +495,158 @@ export function HomeContent() {
                     {profile.gift_preferences || "Henüz eklenmedi. Eşinin işine yarayacak ipuçları ekleyebilirsin."}
                   </p>
                 </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="pb-12 px-4">
+        <div className="max-w-6xl mx-auto space-y-4">
+          <div className="bg-gradient-to-r from-bilgi-red/15 via-dark-card to-gold-accent/10 border border-bilgi-red/30 rounded-2xl p-6 card-glow flex flex-col md:flex-row gap-6">
+            <div className="flex-1 space-y-3">
+              <p className="text-xs uppercase tracking-wide text-gold-accent">Buluşma Anıları</p>
+              <h3 className="font-heading text-2xl font-bold">Buluşma gününden fotoğrafını paylaş</h3>
+              <p className="text-muted-foreground">
+                Buluşma gününde çektiğin fotoğrafı yükle; anılar herkesin görebileceği keşfet akışında listelensin. Beğenilerle
+                arkadaşlarına destek ol!
+              </p>
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <span className={`px-3 py-1 rounded-full border ${canUploadMemory ? "border-green-500/40 text-green-400" : "border-border"}`}>
+                  {canUploadMemory ? "Yükleme açık" : "Buluşma sonrası açılacak"}
+                </span>
+                <span className="text-foreground font-medium">{memoryGateText}</span>
+              </div>
+            </div>
+            <div className="w-full md:w-80 bg-dark-bg/60 border border-border rounded-xl p-4 space-y-3">
+              <div className="space-y-2">
+                <label className="text-sm text-muted-foreground">Fotoğraf</label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex-1 px-3 py-2 rounded-lg border border-border bg-secondary hover:bg-secondary/80 transition-colors text-foreground"
+                  >
+                    Fotoğraf Seç
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => setMemoryFile(e.target.files?.[0] || null)}
+                  />
+                  <button
+                    type="button"
+                    disabled={!memoryFile || uploadingMemory || !canUploadMemory}
+                    onClick={handleUploadMemory}
+                    className="px-4 py-2 rounded-lg bg-bilgi-red text-white font-semibold shadow-lg shadow-bilgi-red/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {uploadingMemory ? "Yükleniyor..." : "Yükle"}
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground line-clamp-1">
+                  {memoryFile ? memoryFile.name : "Henüz fotoğraf seçilmedi"}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm text-muted-foreground">Kısa not (opsiyonel)</label>
+                <textarea
+                  value={memoryCaption}
+                  onChange={(e) => setMemoryCaption(e.target.value.slice(0, 200))}
+                  rows={3}
+                  className="w-full px-3 py-2 rounded-lg bg-dark-bg border border-border text-sm text-foreground resize-none"
+                  placeholder="Günün nasıl geçti?"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Test sürecinde fotoğraf yükleme kısıtı kaldırıldı; normalde buluşma tarihin geçtikten sonra açılacak.
+              </p>
+            </div>
+          </div>
+
+          {memoryMessage && (
+            <div
+              className={`p-4 rounded-lg ${
+                memoryMessage.type === "success"
+                  ? "bg-green-500/10 border border-green-500/30 text-green-400"
+                  : "bg-red-500/10 border border-red-500/30 text-red-400"
+              }`}
+            >
+              {memoryMessage.text}
+            </div>
+          )}
+
+          <div className="bg-dark-card border border-border rounded-2xl p-6 card-glow">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-gold-accent">Keşfet</p>
+                <h3 className="font-heading text-xl font-bold">Anı Akışı</h3>
+                <p className="text-muted-foreground text-sm">Buluşma gününden kareler burada sıralanır.</p>
+              </div>
+              <button
+                type="button"
+                onClick={fetchMemories}
+                className="text-sm text-gold-accent hover:underline"
+                disabled={memoriesLoading}
+              >
+                {memoriesLoading ? "Yükleniyor..." : "Yenile"}
+              </button>
+            </div>
+
+            {memoriesLoading ? (
+              <div className="flex items-center justify-center py-10 text-muted-foreground">Anılar yükleniyor...</div>
+            ) : memories.length === 0 ? (
+              <div className="border border-dashed border-border rounded-xl p-6 text-center text-muted-foreground">
+                Henüz paylaşım yok. Buluşmandan sonra ilk fotoğrafı sen yükle!
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {memories.map((memory) => (
+                  <div
+                    key={memory.id}
+                    className="relative group overflow-hidden rounded-xl border border-border bg-dark-bg/60"
+                  >
+                    <img
+                      src={memory.image_url}
+                      alt={memory.caption || "Buluşma anısı"}
+                      className="h-48 w-full object-cover transform transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent opacity-90 group-hover:opacity-100 transition-opacity" />
+                    <div className="absolute inset-x-0 bottom-0 p-3 flex items-end justify-between gap-3">
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold text-white">{memory.user_name}</p>
+                        {memory.caption && (
+                          <p className="text-xs text-gray-200 line-clamp-2">{memory.caption}</p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => toggleLike(memory.id)}
+                        className={`flex items-center gap-1 px-3 py-2 rounded-full border text-sm transition-colors ${
+                          memory.liked_by_me
+                            ? "bg-bilgi-red/20 border-bilgi-red/50 text-white"
+                            : "bg-dark-bg/70 border-border text-white"
+                        }`}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill={memory.liked_by_me ? "currentColor" : "none"}
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+                        </svg>
+                        <span>{memory.likes_count}</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
