@@ -271,7 +271,10 @@ export default function MemoriesPage() {
             </div>
 
             {memoriesLoading ? (
-              <div className="flex items-center justify-center py-10 text-muted-foreground">Anılar yükleniyor...</div>
+              <div className="flex items-center justify-center py-10 text-muted-foreground">
+                <span className="sr-only">Anılar yükleniyor...</span>
+                <div className="animate-spin w-8 h-8 border-2 border-bilgi-red border-t-transparent rounded-full" />
+              </div>
             ) : memories.length === 0 ? (
               <div className="border border-dashed border-border rounded-xl p-6 text-center text-muted-foreground">
                 Henüz paylaşım yok. İlk fotoğrafı sen yükle!

@@ -449,7 +449,7 @@ export default function ProfilePage() {
         <div className="max-w-2xl mx-auto">
           <MemoryUploader
             title="Buluşma Anını Yükle"
-            description="Eşleşmenle birlikte tek bir fotoğraf paylaşılabilir. Kare formatında yükle, Anılar akışında gözüksün."
+            description="Buluşma saatinden sonra eşleşmenle tek kare paylaşabilirsin; kare formatında yükle."
           />
         </div>
       </div>

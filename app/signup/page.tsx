@@ -7,9 +7,68 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { supabase } from "@/lib/supabaseClient"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { StarsBackground } from "@/components/StarsBackground"
+
+const LIABILITY_SECTIONS = [
+  {
+    title: "Platformun Rolü ve Kapsamı",
+    points: [
+      "Bilgi Santa, katılımcılar arasında hediyeleşme ve buluşma planlamasını kolaylaştıran, resmi kurumları temsil etmeyen gönüllü bir platformdur.",
+      "Platform yalnızca eşleşme ve iletişim için teknik altyapı sağlar; etkinlik, buluşma, hediye temini, kargo, ödeme veya lojistik süreçlerinin hiçbirinden sorumlu değildir.",
+    ],
+  },
+  {
+    title: "Katılımcı Beyanları ve Yükümlülükleri",
+    points: [
+      "Hesabı kendi adınıza ve doğru bilgilerle açtığınızı; gerçek kimliğinizi beyan ettiğinizi kabul edersiniz.",
+      "Paylaştığınız her türlü içerikten (fotoğraf, mesaj, konum, hediye önerisi vb.) hukuken yalnızca siz sorumlusunuz; telif, kişilik hakkı ve KVKK ihlalleri dahil tüm riskleri üstlenirsiniz.",
+      "Yasa dışı, saldırgan, tehdit edici, rahatsız edici veya alkol/tütün/uyuşturucu kullanımını teşvik eden içerik paylaşmayacağınızı kabul edersiniz; tespit halinde hesabınız uyarı olmaksızın kısıtlanabilir ve gerekli mercilere bildirim yapılabilir.",
+    ],
+  },
+  {
+    title: "Buluşma ve Hediyeleşme Riskleri",
+    points: [
+      "Buluşma yeri ve zamanı seçimi, güvenlik, ulaşım, kargo ve teslimat süreçleri tamamen sizin sorumluluğunuzdadır; olası kayıp, çalıntı, gecikme, kaza, yaralanma veya benzeri tüm sonuçlardan yalnızca siz sorumlusunuz.",
+      "Platform hiçbir şekilde tahsilat/ödeme aracı değildir; hediyeleşme ve alışveriş işlemlerinden doğan bedel, masraf ve vergiler size aittir.",
+      "Üçüncü kişilerle yaşanabilecek anlaşmazlık, iptal, gecikme veya memnuniyetsizliklerde platform arabulucu veya garantör değildir.",
+    ],
+  },
+  {
+    title: "Fotoğraf ve İçerik Paylaşımı",
+    points: [
+      "Paylaştığınız fotoğraf, video, yorum ve her türlü içerik için gerekli tüm izinleri aldığınızı ve üçüncü kişilerin haklarını ihlal etmediğinizi beyan edersiniz.",
+      "Şikayet veya ihlal şüphesinde içerik kaldırılabilir, hesap kısıtlanabilir ve yetkili mercilere bilgi verilebilir; bu süreçlerden doğacak sonuçlar size aittir.",
+      "Barındırma, iletim veya depolama sırasında meydana gelebilecek erişim kesintisi, veri kaybı veya hasarlardan platform sorumlu tutulamaz.",
+    ],
+  },
+  {
+    title: "Kişisel Veriler ve İletişim",
+    points: [
+      "Kayıt sırasında sağladığınız ad, e-posta ve isteğe bağlı diğer bilgiler eşleşme, bilgilendirme ve güvenlik amaçlarıyla işlenir; iletişim için sizinle e-posta veya uygulama içi bildirim yoluyla irtibat kurulabilir.",
+      "Kişisel verilerin korunmasına yönelik makul teknik/idari tedbirler alınsa da yetkisiz erişim, saldırı veya veri sızıntısı risklerini bildiğinizi ve bu ihtimallerde platformu sorumlu tutmayacağınızı kabul edersiniz.",
+    ],
+  },
+  {
+    title: "Sorumluluk Reddi ve Feragat",
+    points: [
+      "Platform ve geliştiricileri; doğrudan/dolaylı zarar, kar kaybı, itibar kaybı, veri kaybı, kişisel yaralanma veya üçüncü kişilerin talepleri dahil hiçbir sonuçtan sorumlu değildir.",
+      "Hizmetin kesilmesi, bakım, güncelleme, hata veya güvenlik gerekçesiyle erişimin sınırlandırılması durumunda hesap veya içerik kaybı yaşayabileceğinizi; platformun bu durumlarda tazmin yükümlülüğü olmadığını kabul edersiniz.",
+      "Hesabınız, topluluk kurallarına aykırı davranmanız halinde önceden bildirim yapılmaksızın askıya alınabilir veya sonlandırılabilir.",
+    ],
+  },
+  {
+    title: "Hukuki Çerçeve ve Onay",
+    points: [
+      "Bu koşullar gerektiğinde güncellenebilir; güncel metni takip etmek sizin sorumluluğunuzdadır.",
+      "Türk hukuku geçerlidir; İstanbul (Merkez) mahkemeleri ve icra daireleri yetkilidir.",
+      "Bu metni onaylayarak tüm riskleri ve sorumlulukları üstlendiğinizi, platformu ve geliştiricilerini her türlü talep ve sorumluluktan feragat ettiğinizi kabul edersiniz.",
+    ],
+  },
+]
 
 export default function SignupPage() {
   const router = useRouter()
@@ -19,6 +78,7 @@ export default function SignupPage() {
     password: "",
     confirmPassword: "",
   })
+  const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false)
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
   const [errorMessage, setErrorMessage] = useState("")
 
@@ -28,9 +88,15 @@ export default function SignupPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("🚀 Signup başladı")
-    setStatus("loading")
     setErrorMessage("")
+    console.log("🚀 Signup başladı")
+
+    if (!hasAcceptedTerms) {
+      console.log("❌ Sorumluluk metni onaylanmadı")
+      setStatus("error")
+      setErrorMessage("Hesap oluşturmak için Sorumluluk Reddi ve Açık Rıza metnini onaylamanız gerekir.")
+      return
+    }
 
     // Validate email domain
     if (!validateEmail(formData.email)) {
@@ -58,6 +124,8 @@ export default function SignupPage() {
       return
     }
     console.log("✅ Şifre uzunluğu yeterli")
+
+    setStatus("loading")
 
     try {
       console.log("📤 Supabase signUp çağrısı yapılıyor...")
@@ -244,13 +312,80 @@ export default function SignupPage() {
                 />
               </div>
 
+              <div className="space-y-3 rounded-xl border border-border bg-dark-bg/50 p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Sorumluluk Reddi ve Açık Rıza Metni</p>
+                    <p className="text-xs text-muted-foreground">
+                      Lütfen aşağıdaki koşulları dikkatlice okuyup onaylayın. Onay olmadan hesap açılamaz.
+                    </p>
+                  </div>
+                </div>
+
+                <ScrollArea className="h-64 w-full rounded-lg border border-border bg-dark-bg/60 p-4">
+                  <div className="space-y-4 text-sm">
+                    <div className="space-y-1">
+                      <p className="text-foreground font-semibold">
+                        Bilgi Santa Kullanım Koşulları ve Sorumluluk Reddi
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Bu platformu kullanarak tüm riskleri ve sonuçları üstlendiğinizi, hesap oluşturma ve
+                        katılımlara ilişkin her türlü sorumluluğun size ait olduğunu kabul edersiniz.
+                      </p>
+                    </div>
+
+                    {LIABILITY_SECTIONS.map((section) => (
+                      <div key={section.title} className="space-y-2">
+                        <p className="text-sm font-semibold text-foreground">{section.title}</p>
+                        <ul className="list-disc space-y-1 pl-5 text-xs text-muted-foreground">
+                          {section.points.map((point) => (
+                            <li key={point}>{point}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-foreground">Onay Beyanı</p>
+                      <p className="text-xs text-muted-foreground">
+                        Hesap oluşturma adımına devam ederek yukarıdaki tüm maddeleri okuduğunuzu, anladığınızı ve
+                        eksiksiz şekilde kabul ettiğinizi; platformu ve geliştiricilerini her türlü iddia, talep ve
+                        sorumluluktan feragat ettiğinizi beyan edersiniz.
+                      </p>
+                    </div>
+                  </div>
+                </ScrollArea>
+
+                <div className="flex flex-row items-start gap-3 flex-wrap">
+                  <Checkbox
+                    id="terms"
+                    checked={hasAcceptedTerms}
+                    onCheckedChange={(checked) => setHasAcceptedTerms(checked === true)}
+                    className="mt-0.5 h-4 w-4 sm:h-5 sm:w-5 border-2 border-foreground/60 data-[state=checked]:bg-bilgi-red data-[state=checked]:border-bilgi-red"
+                  />
+                  <Label
+                    htmlFor="terms"
+                    className="block text-[11px] sm:text-xs text-foreground leading-snug sm:leading-relaxed break-words text-left flex-1 min-w-0"
+                  >
+                    Yukarıdaki{" "}
+                    <span className="font-semibold">Sorumluluk Reddi ve Açık Rıza</span> metnini okudum, anladım ve{" "}
+                    <span className="font-semibold">onaylıyorum</span>. Bu kutucuğu işaretlemeden hesap açamayacağımı
+                    kabul ediyorum.
+                  </Label>
+                </div>
+              </div>
+
               {status === "error" && (
                 <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
                   <p className="text-red-500 text-sm">{errorMessage}</p>
                 </div>
               )}
 
-              <Button type="submit" disabled={status === "loading"} className="w-full btn-bilgi">
+              <Button
+                type="submit"
+                disabled={status === "loading" || !hasAcceptedTerms}
+                className="w-full btn-bilgi"
+              >
                 {status === "loading" ? (
                   <span className="flex items-center gap-2">
                     <svg

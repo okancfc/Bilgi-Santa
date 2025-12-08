@@ -3,6 +3,13 @@ import { createSupabaseAdminClient, createSupabaseServerClient } from "@/lib/sup
 
 const getFirstName = (name?: string | null) => (name ? name.trim().split(/\s+/)[0] : "Anonim Santa")
 
+const parseMeetingDateTime = (meeting_date?: string | null, meeting_start?: string | null): Date | null => {
+  if (!meeting_date || !meeting_start) return null
+  const start = meeting_start.length === 5 ? `${meeting_start}:00` : meeting_start
+  const date = new Date(`${meeting_date}T${start}`)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
 export async function GET() {
   try {
     const supabase = await createSupabaseServerClient()
@@ -80,6 +87,53 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    const admin = createSupabaseAdminClient()
+
+    // Fetch latest match for the user
+    const { data: matches, error: matchError } = await admin
+      .from("matches")
+      .select("*")
+      .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
+      .order("created_at", { ascending: false })
+      .limit(1)
+
+    if (matchError) {
+      console.error("Match fetch error:", matchError)
+      return NextResponse.json({ error: "Match bilgisi alınamadı" }, { status: 500 })
+    }
+
+    if (!matches || matches.length === 0) {
+      return NextResponse.json({ error: "Önce bir eşleşmen olmalı" }, { status: 400 })
+    }
+
+    const match = matches[0]
+    const otherUserId = match.user_a === user.id ? match.user_b : match.user_a
+    const meetingDateTime = parseMeetingDateTime(match.meeting_date, match.meeting_start)
+
+    if (!meetingDateTime) {
+      return NextResponse.json({ error: "Buluşma bilgisi eksik" }, { status: 400 })
+    }
+
+    if (Date.now() < meetingDateTime.getTime()) {
+      return NextResponse.json({ error: "Fotoğraf yükleme buluşma sonrasında açılır" }, { status: 403 })
+    }
+
+    // Ensure pair has only one memory
+    const { data: existingMemory, error: existingError } = await admin
+      .from("memories")
+      .select("id")
+      .in("user_id", [user.id, otherUserId])
+      .limit(1)
+
+    if (existingError) {
+      console.error("Memory existing check error:", existingError)
+      return NextResponse.json({ error: "Kontrol sırasında hata oluştu" }, { status: 500 })
+    }
+
+    if (existingMemory && existingMemory.length > 0) {
+      return NextResponse.json({ error: "Eşleşmeniz için zaten bir fotoğraf var" }, { status: 409 })
+    }
+
     const body = await request.json().catch(() => null)
     const imageUrl = body?.imageUrl as string | undefined
     const caption = body?.caption as string | undefined
@@ -87,8 +141,6 @@ export async function POST(request: Request) {
     if (!imageUrl) {
       return NextResponse.json({ error: "Image URL is required" }, { status: 400 })
     }
-
-    const admin = createSupabaseAdminClient()
 
     const { data, error } = await admin
       .from("memories")

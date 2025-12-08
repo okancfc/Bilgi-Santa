@@ -403,7 +403,7 @@ export function HomeContent() {
         <div className="max-w-6xl mx-auto">
           <MemoryUploader
             title="Anını Yükle"
-            description="Buluşma gününden kareyi buradan ekle, eşleşmenle tek fotoğraf paylaşılabilir."
+            description="Buluşma saatinden sonra eşleşmenle tek kare paylaşabilirsin; kare formatında yükle."
           />
         </div>
       </section>

@@ -9,6 +9,10 @@ interface MemoryItemLite {
 }
 
 interface MatchResponse {
+  match: {
+    meeting_date: string | null
+    meeting_start: string | null
+  } | null
   otherProfile: { user_id: string; name: string | null } | null
 }
 
@@ -25,6 +29,8 @@ export function MemoryUploader({ title = "Buluşma Anısı Yükle", description 
   const [memoryFile, setMemoryFile] = useState<File | null>(null)
   const [uploadingMemory, setUploadingMemory] = useState(false)
   const [checking, setChecking] = useState(false)
+  const [meetingTime, setMeetingTime] = useState<number | null>(null)
+  const [now, setNow] = useState<number>(() => Date.now())
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
@@ -41,15 +47,35 @@ export function MemoryUploader({ title = "Buluşma Anısı Yükle", description 
         if (matchData.otherProfile?.user_id) {
           setPartnerId(matchData.otherProfile.user_id)
         }
+        if (matchData.match?.meeting_date && matchData.match.meeting_start) {
+          const start = matchData.match.meeting_start.length === 5 ? `${matchData.match.meeting_start}:00` : matchData.match.meeting_start
+          const dt = new Date(`${matchData.match.meeting_date}T${start}`)
+          if (!Number.isNaN(dt.getTime())) setMeetingTime(dt.getTime())
+        }
       }
     }
     loadUserAndMatch()
+    const interval = setInterval(() => setNow(Date.now()), 60000)
+    return () => clearInterval(interval)
   }, [])
 
-  const hasPairMemory = useMemo(() => {
-    // Computed after fetchMemories check
-    return false
-  }, [])
+  const canUploadByTime = useMemo(() => {
+    if (!meetingTime) return false
+    return now >= meetingTime
+  }, [meetingTime, now])
+
+  const meetingCountdown = useMemo(() => {
+    if (!meetingTime) return "Buluşma bilgisi bekleniyor"
+    const diff = meetingTime - now
+    if (diff <= 0) return null
+    const totalMinutes = Math.ceil(diff / 60000)
+    const days = Math.floor(totalMinutes / (60 * 24))
+    const hours = Math.floor((totalMinutes % (60 * 24)) / 60)
+    const minutes = totalMinutes % 60
+    if (days > 0) return `${days}g ${hours}s`
+    if (hours > 0) return `${hours}s ${minutes}dk`
+    return `${minutes}dk`
+  }, [meetingTime, now])
 
   const checkPairMemory = async () => {
     if (!userId) return false
@@ -102,6 +128,11 @@ export function MemoryUploader({ title = "Buluşma Anısı Yükle", description 
     }
     if (!userId) {
       setMessage({ type: "error", text: "Oturum bulunamadı. Yeniden giriş yap." })
+      return
+    }
+
+    if (!canUploadByTime) {
+      setMessage({ type: "error", text: "Fotoğraf yükleme buluşma saatinden sonra açılır." })
       return
     }
 
@@ -164,7 +195,11 @@ export function MemoryUploader({ title = "Buluşma Anısı Yükle", description 
         <p className="text-sm text-muted-foreground">
           {description || "Buluşma gününden kareyi yükle, kare formatında Anılar akışında görünsün."}
         </p>
-        <p className="text-xs text-muted-foreground">Eşleşme başına tek fotoğraf paylaşılabilir.</p>
+        <p className="text-xs text-muted-foreground">
+          Eşleşme başına tek fotoğraf paylaşılabilir.{" "}
+          {canUploadByTime ? "Yükleme açık." : "Fotoğraf yükleme buluşma saatinden sonra açılacak."}
+          {meetingCountdown ? ` (${meetingCountdown} kaldı)` : ""}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-[1.2fr_1fr] gap-4">
@@ -173,8 +208,15 @@ export function MemoryUploader({ title = "Buluşma Anısı Yükle", description 
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="flex-1 px-3 py-2 rounded-lg border border-border bg-secondary hover:bg-secondary/80 transition-colors text-foreground text-left"
+              onClick={() => {
+                if (!canUploadByTime) {
+                  setMessage({ type: "error", text: "Fotoğraf yükleme buluşma saatinden sonra açılır." })
+                  return
+                }
+                fileInputRef.current?.click()
+              }}
+              disabled={!canUploadByTime}
+              className="flex-1 px-3 py-2 rounded-lg border border-border bg-secondary hover:bg-secondary/80 transition-colors text-foreground text-left disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {memoryFile ? memoryFile.name : "Fotoğraf Seç"}
             </button>
@@ -184,10 +226,11 @@ export function MemoryUploader({ title = "Buluşma Anısı Yükle", description 
               accept="image/*"
               className="hidden"
               onChange={(e) => setMemoryFile(e.target.files?.[0] || null)}
+              disabled={!canUploadByTime}
             />
             <button
               type="button"
-              disabled={!memoryFile || uploadingMemory || checking}
+              disabled={!memoryFile || uploadingMemory || checking || !canUploadByTime}
               onClick={handleUploadMemory}
               className="px-4 py-2 rounded-lg bg-bilgi-red text-white font-semibold shadow hover:shadow-bilgi-red/40 disabled:opacity-50 disabled:cursor-not-allowed"
             >
