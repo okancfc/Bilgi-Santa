@@ -155,7 +155,8 @@ export function HomeContent() {
               <p className="text-sm text-gold-accent mb-1">Hoş geldin</p>
               <h1 className="font-heading text-3xl md:text-4xl font-bold mb-2">{formattedUserName}!</h1>
               <p className="text-muted-foreground">
-                Süreç buradan devam ediyor. Profilini, müsaitliklerini ve eşleşmeni tek ekrandan takip et.
+                Süreç buradan devam ediyor. Profilini, müsaitliklerini ve eşleşmeni tek ekrandan takip et; buluşmadan sonra
+                Anılar sayfasına fotoğraf yüklemeyi unutma.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -269,18 +270,21 @@ export function HomeContent() {
                   </div>
                 </div>
 
-                <div className="bg-bilgi-red/10 border border-bilgi-red/30 rounded-lg p-3">
-                  <p className="text-sm text-bilgi-red font-medium flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-bilgi-red/20 flex items-center justify-center text-xs font-bold">
-                      !
-                    </span>
-                    Eşin: Anonim Santa
-                  </p>
-                  {matchData.otherProfile?.interests?.length ? (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {matchData.otherProfile.interests.slice(0, 4).map((interest) => (
-                        <span
-                          key={interest}
+              <div className="bg-bilgi-red/10 border border-bilgi-red/30 rounded-lg p-3">
+                <p className="text-sm text-bilgi-red font-medium flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-bilgi-red/20 flex items-center justify-center text-xs font-bold">
+                    !
+                  </span>
+                  Eşin: Anonim Santa
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Buluşma günü fotoğraf çekip Anılar sayfasına yüklemeyi unutma, ikiniz için tek kare paylaşılabilir.
+                </p>
+                {matchData.otherProfile?.interests?.length ? (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {matchData.otherProfile.interests.slice(0, 4).map((interest) => (
+                      <span
+                        key={interest}
                           className="px-3 py-1 bg-dark-bg rounded-full text-xs border border-bilgi-red/30 text-muted-foreground"
                         >
                           {interest}

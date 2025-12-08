@@ -8,6 +8,7 @@ import { UserNav } from "@/components/UserNav"
 
 interface MemoryItem {
   id: string
+  user_id: string
   image_url: string
   caption: string | null
   created_at: string
@@ -21,6 +22,8 @@ export default function MemoriesPage() {
   const [loading, setLoading] = useState(true)
   const [userName, setUserName] = useState<string>("")
   const [userId, setUserId] = useState<string>("")
+  const [partnerId, setPartnerId] = useState<string>("")
+  const [partnerName, setPartnerName] = useState<string>("")
   const [memories, setMemories] = useState<MemoryItem[]>([])
   const [memoriesLoading, setMemoriesLoading] = useState(false)
   const [memoryMessage, setMemoryMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
@@ -28,6 +31,7 @@ export default function MemoriesPage() {
   const [memoryFile, setMemoryFile] = useState<File | null>(null)
   const [uploadingMemory, setUploadingMemory] = useState(false)
   const [now, setNow] = useState<number>(() => Date.now())
+  const [lightbox, setLightbox] = useState<{ url: string; caption?: string | null; user_name?: string } | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
@@ -46,6 +50,16 @@ export default function MemoriesPage() {
       const { data: profile } = await supabase.from("profiles").select("name").eq("user_id", user.id).single()
       setUserName(profile?.name || user.email?.split("@")[0] || "Santa")
 
+      // match için partner bilgisi
+      const matchResponse = await fetch("/api/match")
+      if (matchResponse.ok) {
+        const matchData = (await matchResponse.json()) as { otherProfile: { user_id: string; name: string | null } | null }
+        if (matchData?.otherProfile) {
+          setPartnerId(matchData.otherProfile.user_id)
+          setPartnerName(matchData.otherProfile.name || "Eşin")
+        }
+      }
+
       setLoading(false)
     }
 
@@ -55,7 +69,7 @@ export default function MemoriesPage() {
   }, [router])
 
   const meetingGateText = useMemo(
-    () => "Test sürecinde fotoğraf yükleme kısıtı kaldırıldı; buluşma günü sonrası kuralı ileride yeniden açacağız.",
+    () => "Test sürecinde fotoğraf yükleme kısıtı kaldırıldı; ileride buluşma sonrası kuralı yeniden açacağız.",
     [],
   )
 
@@ -84,9 +98,23 @@ export default function MemoriesPage() {
     }
   }, [loading])
 
+  const hasPairMemory = useMemo(() => {
+    if (!userId) return false
+    return memories.some((m) => m.user_id === userId || (partnerId && m.user_id === partnerId))
+  }, [memories, partnerId, userId])
+
+  const pairDisplayName = useMemo(() => {
+    if (!partnerName) return userName || "Anonim"
+    return `${userName || "Sen"} & ${partnerName}`
+  }, [partnerName, userName])
+
   const handleUploadMemory = async () => {
     if (!memoryFile) {
       setMemoryMessage({ type: "error", text: "Lütfen bir fotoğraf seç." })
+      return
+    }
+    if (hasPairMemory) {
+      setMemoryMessage({ type: "error", text: "Eşleşmeniz için zaten bir fotoğraf yüklendi." })
       return
     }
 
@@ -94,13 +122,18 @@ export default function MemoriesPage() {
     setMemoryMessage(null)
 
     try {
-      const ext = memoryFile.name.split(".").pop() || "jpg"
+      const compressed = await compressImage(memoryFile)
+      const ext = compressed.name.split(".").pop() || "jpg"
       const fileName = `${Date.now()}-${Math.floor(Math.random() * 10000)}.${ext}`
       const filePath = `${userId || "me"}/${fileName}`
 
       const { error: uploadError } = await supabase.storage
         .from("memories")
-        .upload(filePath, memoryFile, { cacheControl: "3600", upsert: false, contentType: memoryFile.type || "image/jpeg" })
+        .upload(filePath, compressed, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: compressed.type || "image/jpeg",
+        })
 
       if (uploadError) {
         console.error("Memory upload error:", uploadError)
@@ -176,43 +209,68 @@ export default function MemoriesPage() {
     )
   }
 
+  const getDisplayName = (memory: MemoryItem) => {
+    if (!userId) return memory.user_name
+    if (memory.user_id === userId || (partnerId && memory.user_id === partnerId)) {
+      return pairDisplayName
+    }
+    return memory.user_name
+  }
+
+  const compressImage = async (file: File): Promise<File> => {
+    const imageBitmap = await createImageBitmap(file)
+    const maxSize = 1280
+    let { width, height } = imageBitmap
+    if (width > height && width > maxSize) {
+      height = Math.round((height * maxSize) / width)
+      width = maxSize
+    } else if (height > maxSize) {
+      width = Math.round((width * maxSize) / height)
+      height = maxSize
+    }
+
+    const canvas = document.createElement("canvas")
+    canvas.width = width
+    canvas.height = height
+    const ctx = canvas.getContext("2d")
+    if (ctx) {
+      ctx.drawImage(imageBitmap, 0, 0, width, height)
+    }
+
+    const blob: Blob = await new Promise((resolve) =>
+      canvas.toBlob((b) => resolve(b as Blob), "image/jpeg", 0.8),
+    )
+
+    return new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" })
+  }
+
   return (
     <main className="relative min-h-screen">
       <StarsBackground />
       <UserNav userName={userName} />
 
       <div className="relative z-10 pt-24 pb-16 px-4">
-        <div className="max-w-6xl mx-auto space-y-6">
-          <div className="bg-gradient-to-br from-bilgi-red/20 via-dark-card to-gold-accent/15 border border-bilgi-red/40 rounded-3xl p-6 md:p-8 card-glow grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
-            <div className="lg:col-span-2 space-y-3">
-              <p className="text-xs uppercase tracking-wide text-gold-accent">Keşfet</p>
-              <h1 className="font-heading text-3xl md:text-4xl font-bold">Buluşma Anıları</h1>
-              <p className="text-muted-foreground max-w-2xl">
-                Fotoğrafını yükle, kare kartlar halinde keşfet akışına düşsün. Beğenilerle arkadaşlarının anılarını öne çıkar.
-              </p>
-              <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                <span className="px-3 py-1 rounded-full border border-green-500/40 text-green-400 bg-green-500/10">Yükleme açık</span>
-                <span className="text-foreground font-medium">{meetingGateText}</span>
-                <button
-                  type="button"
-                  onClick={fetchMemories}
-                  className="text-sm text-gold-accent hover:underline"
-                  disabled={memoriesLoading}
-                >
-                  {memoriesLoading ? "Yükleniyor..." : "Akışı yenile"}
-                </button>
+        <div className="max-w-5xl mx-auto space-y-6">
+          <div className="bg-dark-card border border-border rounded-2xl p-5 md:p-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-gold-accent">Buluşma Anıları</p>
+                <h1 className="font-heading text-2xl md:text-3xl font-bold">Fotoğraf yükle ve paylaş</h1>
+                <p className="text-sm text-muted-foreground">Kare fotoğraf olarak akışta görünecek. İstersen kısa bir not ekle.</p>
+                <p className="text-xs text-muted-foreground mt-1">{meetingGateText}</p>
               </div>
             </div>
-            <div className="w-full bg-dark-bg/70 border border-border rounded-2xl p-4 space-y-3">
+
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-[1.2fr_1fr] gap-4">
               <div className="space-y-2">
                 <label className="text-sm text-muted-foreground">Fotoğraf</label>
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex-1 px-3 py-2 rounded-lg border border-border bg-secondary hover:bg-secondary/80 transition-colors text-foreground"
+                    className="flex-1 px-3 py-2 rounded-lg border border-border bg-secondary hover:bg-secondary/80 transition-colors text-foreground text-left"
                   >
-                    Fotoğraf Seç
+                    {memoryFile ? memoryFile.name : "Fotoğraf Seç"}
                   </button>
                   <input
                     ref={fileInputRef}
@@ -225,7 +283,7 @@ export default function MemoriesPage() {
                     type="button"
                     disabled={!memoryFile || uploadingMemory}
                     onClick={handleUploadMemory}
-                    className="px-4 py-2 rounded-lg bg-bilgi-red text-white font-semibold shadow-lg shadow-bilgi-red/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 rounded-lg bg-bilgi-red text-white font-semibold shadow hover:shadow-bilgi-red/40 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {uploadingMemory ? "Yükleniyor..." : "Yükle"}
                   </button>
@@ -244,7 +302,6 @@ export default function MemoriesPage() {
                   placeholder="Günün nasıl geçti?"
                 />
               </div>
-              <p className="text-xs text-muted-foreground">{meetingGateText}</p>
             </div>
           </div>
 
@@ -260,13 +317,10 @@ export default function MemoriesPage() {
             </div>
           )}
 
-          <div className="bg-dark-card border border-border rounded-3xl p-6 card-glow">
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <p className="text-xs uppercase tracking-wide text-gold-accent">Akış</p>
-                <h3 className="font-heading text-2xl font-bold">Keşfet</h3>
-                <p className="text-muted-foreground text-sm">Kare kartlar, yumuşak köşeler ve net overlay ile.</p>
-              </div>
+          <div className="bg-dark-card border border-border rounded-2xl p-5 md:p-6">
+            <div className="mb-4">
+              <p className="text-xs uppercase tracking-wide text-gold-accent">Keşfet</p>
+              <h3 className="font-heading text-xl font-bold">Anı Akışı</h3>
             </div>
 
             {memoriesLoading ? (
@@ -276,32 +330,45 @@ export default function MemoriesPage() {
                 Henüz paylaşım yok. İlk fotoğrafı sen yükle!
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                 {memories.map((memory) => (
                   <div
                     key={memory.id}
-                    className="relative group overflow-hidden rounded-2xl border border-border bg-dark-bg/60"
+                    className="relative group overflow-hidden rounded-xl border border-border bg-dark-bg/60"
                   >
-                    <div className="aspect-square w-full overflow-hidden">
+                    <div
+                      className="aspect-square w-full overflow-hidden cursor-zoom-in"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() =>
+                        setLightbox({ url: memory.image_url, caption: memory.caption, user_name: getDisplayName(memory) })
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault()
+                          setLightbox({ url: memory.image_url, caption: memory.caption, user_name: getDisplayName(memory) })
+                        }
+                      }}
+                    >
                       <img
                         src={memory.image_url}
                         alt={memory.caption || "Buluşma anısı"}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                       />
                     </div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-transparent opacity-90 group-hover:opacity-100 transition-opacity" />
-                    <div className="absolute inset-x-0 bottom-0 p-3 flex items-end justify-between gap-3">
-                      <div className="space-y-1 max-w-[70%]">
-                        <p className="text-sm font-semibold text-white truncate">{memory.user_name}</p>
-                        {memory.caption && <p className="text-xs text-gray-200 line-clamp-2">{memory.caption}</p>}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/40 to-transparent opacity-90 group-hover:opacity-100 transition-opacity" />
+                    <div className="absolute inset-x-0 bottom-0 p-3 flex items-end justify-between gap-2">
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <p className="text-sm font-semibold text-white truncate">{getDisplayName(memory)}</p>
+                        {memory.caption && <p className="text-xs text-gray-200 line-clamp-2 break-words">{memory.caption}</p>}
                       </div>
                       <button
                         type="button"
                         onClick={() => toggleLike(memory.id)}
-                        className={`flex items-center gap-1 px-3 py-2 rounded-full border text-sm transition-colors ${
+                        className={`flex-shrink-0 flex items-center gap-1 px-3 py-2 rounded-full border text-sm transition-colors whitespace-nowrap ${
                           memory.liked_by_me
-                            ? "bg-bilgi-red/25 border-bilgi-red/50 text-white"
-                            : "bg-dark-bg/70 border-border text-white"
+                            ? "bg-bilgi-red/25 border-bilgi-red/20 text-white"
+                            : "bg-dark-bg/20 border-border text-white"
                         }`}
                       >
                         <svg
@@ -317,7 +384,7 @@ export default function MemoriesPage() {
                         >
                           <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
                         </svg>
-                        <span>{memory.likes_count}</span>
+                        <span className="w-3">{memory.likes_count}</span>
                       </button>
                     </div>
                   </div>
@@ -327,6 +394,31 @@ export default function MemoriesPage() {
           </div>
         </div>
       </div>
+
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setLightbox(null)}
+        >
+          <div
+            className="relative max-w-4xl w-full max-h-[85vh] bg-dark-card border border-border rounded-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img src={lightbox.url} alt={lightbox.caption || "Anı"} className="w-full h-full object-contain bg-black" />
+            <button
+              className="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center"
+              onClick={() => setLightbox(null)}
+              aria-label="Kapat"
+            >
+              ✕
+            </button>
+            <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 space-y-1">
+              {lightbox.user_name && <p className="text-sm font-semibold text-white">{lightbox.user_name}</p>}
+              {lightbox.caption && <p className="text-xs text-gray-200">{lightbox.caption}</p>}
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

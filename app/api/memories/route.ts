@@ -51,6 +51,7 @@ export async function GET() {
     const items =
       memories?.map((m) => ({
         id: m.id,
+        user_id: m.user_id,
         image_url: m.image_url,
         caption: m.caption,
         created_at: m.created_at,
@@ -94,7 +95,7 @@ export async function POST(request: Request) {
         image_url: imageUrl,
         caption: caption ? caption.slice(0, 200) : null,
       })
-      .select("id, image_url, caption, created_at, likes_count")
+      .select("id, user_id, image_url, caption, created_at, likes_count")
       .single()
 
     if (error || !data) {

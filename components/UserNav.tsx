@@ -41,6 +41,9 @@ export function UserNav({ userName }: UserNavProps) {
         <div className="flex items-center gap-4">
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-6">
+            <Link href="/" className="text-muted-foreground hover:text-foreground transition-colors">
+              Anasayfa
+            </Link>
             <Link href="/profile" className="text-muted-foreground hover:text-foreground transition-colors">
               Profil
             </Link>
@@ -96,6 +99,13 @@ export function UserNav({ userName }: UserNavProps) {
                       onClick={() => setIsOpen(false)}
                     >
                       Profil
+                    </Link>
+                    <Link
+                      href="/"
+                      className="block px-4 py-2 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      Anasayfa
                     </Link>
                     <Link
                       href="/availability"
