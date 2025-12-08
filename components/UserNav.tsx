@@ -50,6 +50,9 @@ export function UserNav({ userName }: UserNavProps) {
             <Link href="/match" className="text-muted-foreground hover:text-foreground transition-colors">
               Eşleşme
             </Link>
+            <Link href="/memories" className="text-muted-foreground hover:text-foreground transition-colors">
+              Anılar
+            </Link>
           </div>
 
           {/* User menu */}
@@ -107,6 +110,13 @@ export function UserNav({ userName }: UserNavProps) {
                       onClick={() => setIsOpen(false)}
                     >
                       Eşleşme
+                    </Link>
+                    <Link
+                      href="/memories"
+                      className="block px-4 py-2 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      Anılar
                     </Link>
                   </div>
 
