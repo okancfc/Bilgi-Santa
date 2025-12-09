@@ -50,6 +50,7 @@ const LIABILITY_SECTIONS = [
     title: "Kişisel Veriler ve İletişim",
     points: [
       "Kayıt sırasında sağladığınız ad, e-posta ve isteğe bağlı diğer bilgiler eşleşme, bilgilendirme ve güvenlik amaçlarıyla işlenir; iletişim için sizinle e-posta veya uygulama içi bildirim yoluyla irtibat kurulabilir.",
+      "E-posta adresinizin gelecekteki etkinlik ve projelerle ilgili bilgilendirme/içerik gönderimleri için kullanılmasına açık rıza verirsiniz; dilediğinizde iletişim tercihinizi bize yazarak kaldırabilirsiniz.",
       "Kişisel verilerin korunmasına yönelik makul teknik/idari tedbirler alınsa da yetkisiz erişim, saldırı veya veri sızıntısı risklerini bildiğinizi ve bu ihtimallerde platformu sorumlu tutmayacağınızı kabul edersiniz.",
     ],
   },
@@ -367,7 +368,8 @@ export default function SignupPage() {
                           <p className="text-xs text-muted-foreground">
                             Hesap oluşturma adımına devam ederek yukarıdaki tüm maddeleri okuduğunuzu, anladığınızı ve
                             eksiksiz şekilde kabul ettiğinizi; platformu ve geliştiricilerini her türlü iddia, talep ve
-                            sorumluluktan feragat ettiğinizi beyan edersiniz.
+                            sorumluluktan feragat ettiğinizi ve iletişim e-postalarının (gelecek etkinlik/proje
+                            duyuruları dahil) gönderilmesine açık rıza verdiğinizi beyan edersiniz.
                           </p>
                         </div>
                       </div>
