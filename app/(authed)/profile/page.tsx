@@ -22,6 +22,7 @@ export default function ProfilePage() {
   const [user, setUser] = useState<{ id: string; email: string } | null>(null)
   const [profile, setProfile] = useState<Partial<Profile>>({
     name: "",
+    gender: undefined,
     department: "",
     class_year: undefined,
     interests: [],
@@ -31,6 +32,19 @@ export default function ProfilePage() {
   })
   const [selectedGiftPrefs, setSelectedGiftPrefs] = useState<string[]>([])
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const genderOptions = [
+    { value: "kiz", label: "Kız" },
+    { value: "erkek", label: "Erkek" },
+  ] as const
+  const genderButtonClass = (value: "kiz" | "erkek") => {
+    const activeStyles =
+      value === "kiz"
+        ? "border-pink-500/50 bg-pink-500/15 text-pink-100 shadow-[0_10px_25px_rgba(236,72,153,0.35)]"
+        : "border-blue-500/50 bg-blue-500/15 text-blue-100 shadow-[0_10px_25px_rgba(59,130,246,0.35)]"
+    return `flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium transition-all ${
+      profile.gender === value ? activeStyles : "border-border bg-dark-bg hover:border-bilgi-red/50 text-muted-foreground"
+    }`
+  }
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -144,6 +158,9 @@ export default function ProfilePage() {
     if (!profile.name || profile.name.trim() === "") {
       missingFields.push("İsim Soyisim")
     }
+    if (!profile.gender) {
+      missingFields.push("Cinsiyet")
+    }
     if (!profile.department || profile.department.trim() === "") {
       missingFields.push("Bölüm")
     }
@@ -159,6 +176,7 @@ export default function ProfilePage() {
     console.log("📋 Form durumu:")
     console.log("  - İsim:", profile.name || "❌ BOŞ")
     console.log("  - Email:", user.email || "❌ BOŞ")
+    console.log("  - Cinsiyet:", profile.gender || "❌ BOŞ")
     console.log("  - Bölüm:", profile.department || "❌ BOŞ")
     console.log("  - Sınıf:", profile.class_year || "❌ BOŞ")
     console.log("  - İlgi Alanları:", profile.interests?.length || 0, "adet")
@@ -183,6 +201,7 @@ export default function ProfilePage() {
       const profileData = {
         user_id: user.id,
         name: profile.name,
+        gender: profile.gender,
         email: user.email,
         department: profile.department,
         class_year: profile.class_year,
@@ -276,6 +295,35 @@ export default function ProfilePage() {
                     className="mt-1 bg-dark-bg border-border"
                     placeholder="Adınız Soyadınız"
                   />
+                </div>
+
+                <div>
+                  <Label>Cinsiyet</Label>
+                  <p className="text-muted-foreground text-xs mt-1 mb-3">
+                    Eşleşme algoritmasında kullanılmaz; sadece buluşma kartında bilgi olarak görünür.
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {genderOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        className={genderButtonClass(option.value)}
+                        onClick={() => setProfile({ ...profile, gender: option.value })}
+                        aria-pressed={profile.gender === option.value}
+                      >
+                      <span
+                        className={`h-2.5 w-2.5 rounded-full ${
+                          profile.gender === option.value
+                            ? option.value === "kiz"
+                              ? "bg-pink-400"
+                              : "bg-blue-400"
+                            : "bg-border"
+                        }`}
+                      />
+                      {option.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div>

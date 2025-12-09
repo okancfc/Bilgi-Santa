@@ -23,6 +23,7 @@ export interface Profile {
   user_id: string
   name: string | null
   email: string | null
+  gender: "kiz" | "erkek" | null
   department: string | null
   class_year: number | null
   interests: string[]

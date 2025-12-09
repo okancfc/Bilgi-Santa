@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
   name TEXT,
+  gender TEXT CHECK (gender IN ('kiz', 'erkek')),
   email TEXT,
   department TEXT,
   class_year INTEGER,

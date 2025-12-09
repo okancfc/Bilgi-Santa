@@ -11,6 +11,11 @@ interface MatchData {
   otherProfile: Profile
 }
 
+const genderMeta = {
+  kiz: { label: "Kız", badge: "bg-pink-500/15 text-pink-100 border border-pink-500/40" },
+  erkek: { label: "Erkek", badge: "bg-blue-500/15 text-blue-100 border border-blue-500/40" },
+} as const
+
 export default function MatchPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -203,6 +208,25 @@ export default function MatchPage() {
                   <div className="bg-dark-bg/50 rounded-xl p-4">
                     <p className="text-sm text-muted-foreground mb-1">Yer</p>
                     <p className="font-medium text-foreground">{matchData.match.meeting_location || "Belirtilmedi"}</p>
+                  </div>
+                  <div className="bg-dark-bg/50 rounded-xl p-4">
+                    <p className="text-sm text-muted-foreground mb-1">Eşinin Cinsiyeti</p>
+                    {matchData.otherProfile.gender ? (
+                      <span
+                        className={`inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium ${
+                          genderMeta[matchData.otherProfile.gender as "kiz" | "erkek"]?.badge ?? ""
+                        }`}
+                      >
+                        <span
+                          className={`h-2 w-2 rounded-full ${
+                            matchData.otherProfile.gender === "kiz" ? "bg-pink-400" : "bg-blue-400"
+                          }`}
+                        />
+                        {genderMeta[matchData.otherProfile.gender as "kiz" | "erkek"]?.label || "Belirtilmedi"}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">Belirtilmedi</span>
+                    )}
                   </div>
                 </div>
 
