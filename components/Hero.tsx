@@ -27,12 +27,12 @@ export function Hero() {
         />
 
         <div
-          className="absolute top-0 bottom-0 w-10 sm:w-20 right-0 bg-gradient-to-r from-background/0 via-background/40 to-black pointer-events-none"
+          className="absolute top-0 bottom-0 w-5 sm:w-20 right-0 bg-gradient-to-r from-background/0 via-background/40 to-black pointer-events-none"
           aria-hidden
         />
 
         <div
-          className="absolute top-0 bottom-0 w-10 sm:w-20 left-0 bg-gradient-to-l from-background/0 via-background/40 to-black pointer-events-none"
+          className="absolute top-0 bottom-0 w-5 sm:w-20 left-0 bg-gradient-to-l from-background/0 via-background/40 to-black pointer-events-none"
           aria-hidden
         />
       </div>
