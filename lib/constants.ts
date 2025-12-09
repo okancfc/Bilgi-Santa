@@ -63,10 +63,15 @@ export const SANTRAL_CAMPUS = { value: "santralistanbul", label: "santralistanbu
 
 export const CAMPUS_LOCATION_OPTIONS = {
   santralistanbul: [
-    { value: "enerji-muzesi-onu", label: "Enerji Müzesi Önü" },
-    { value: "kutuphane-onu", label: "Kütüphane Önü" },
-    { value: "radyo-bilgi-yani", label: "Radyo Bilgi Yanı" },
-  ]
+    { value: "csm-onu", label: "ÇSM Önü Banklar" },
+    { value: "gastronomi-onu", label: "Gastronomi Önü Banklar" },
+    { value: "espresso-yani", label: "Espresso Lab" },
+    { value: "lokanta-yani", label: "Lokanta Sosyal Bahçesi" },
+    { value: "blab", label: "Blab" },
+    { value: "caffe-nero", label: "Caffe Nero" },
+    { value: "sunpeak", label: "Sunpeak" },
+    { value: "starbucks", label: "Starbucks" },
+  ],
 }
 
 export const HOURLY_TIME_OPTIONS = Array.from({ length: 13 }, (_item, index) => {
