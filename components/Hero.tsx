@@ -6,7 +6,7 @@ import heroBg from "@/public/hero-bg2-min.webp"
 export function Hero() {
   return (
     <section className="relative min-h-[90vh] flex flex-col items-center justify-start pb-20 overflow-hidden">
-      <div className="relative w-[100vw] ml-[calc(50%-50vw)] h-60 mb-8 overflow-hidden">
+      <div className="relative lg:w-[50vw] w-[100vw] ml-[calc(50%-50vw)] h-60 lg:h-96 mb-8 overflow-hidden">
         <Image
           src={heroBg}
           alt="Hero Background"
@@ -18,6 +18,21 @@ export function Hero() {
         />
         <div
           className="absolute inset-0 bg-gradient-to-b from-background/10 via-background/40 to-black pointer-events-none"
+          aria-hidden
+        />
+
+        <div
+          className="absolute inset-0 bg-gradient-to-t h-20 from-background/0 via-background/40 to-black pointer-events-none"
+          aria-hidden
+        />
+
+        <div
+          className="absolute top-0 bottom-0 w-10 sm:w-20 right-0 bg-gradient-to-r from-background/0 via-background/40 to-black pointer-events-none"
+          aria-hidden
+        />
+
+        <div
+          className="absolute top-0 bottom-0 w-10 sm:w-20 left-0 bg-gradient-to-l from-background/0 via-background/40 to-black pointer-events-none"
           aria-hidden
         />
       </div>

@@ -172,11 +172,6 @@
   box-shadow: 0 0 20px rgba(227, 30, 36, 0.4);
 }
 
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
 ::-webkit-scrollbar-track {
   background: var(--dark-bg);
 }
