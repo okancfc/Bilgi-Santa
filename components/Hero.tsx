@@ -2,6 +2,7 @@ import Image from "next/image"
 import Link from "next/link"
 
 import heroBg from "@/public/hero-bg2-min.webp"
+import bilgiSantaLogo from "@/public/bilgi-santa-logo.png"
 
 export function Hero() {
   return (
@@ -45,8 +46,15 @@ export function Hero() {
         </div>
 
         {/* Main title */}
-        <h1 className="font-heading text-5xl md:text-7xl lg:text-8xl font-bold mb-6 tracking-tight">
-          <span className="gradient-text">Bilgi Santa</span>
+        <h1 className="mb-6 flex justify-center">
+          <span className="sr-only">Bilgi Santa</span>
+          <Image
+            src={bilgiSantaLogo}
+            alt="Bilgi Santa"
+            priority
+            className="h-20 w-auto md:h-30 lg:h-40 drop-shadow-[0_16px_48px_rgba(0,0,0,0.35)]"
+            sizes="(min-width: 1024px) 320px, (min-width: 768px) 260px, 220px"
+          />
         </h1>
 
         {/* Description */}

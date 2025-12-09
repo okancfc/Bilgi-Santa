@@ -4,6 +4,7 @@ import Image from "next/image"
 import { useState } from "react"
 
 import { ContactModal } from "./ContactModal"
+import bilgiSantaLogo from "@/public/bilgi-santa-logo.png"
 
 export function Footer() {
   const [isContactOpen, setIsContactOpen] = useState(false)
@@ -15,7 +16,9 @@ export function Footer() {
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             {/* Logo and info */}
             <div className="text-center md:text-left">
-              <h3 className="font-heading text-xl font-bold gradient-text mb-2">Bilgi Santa</h3>
+              <div className="flex justify-center md:justify-start">
+                <Image src={bilgiSantaLogo} alt="Bilgi Santa" sizes="200px" className="h-12 w-auto" />
+              </div>
             </div>
 
             {/* Links */}

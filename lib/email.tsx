@@ -37,6 +37,7 @@ export function createMatchNotificationEmail(params: {
   partnerInterests: string[]
 }): string {
   const { recipientName, meetingDate, meetingTime, meetingLocation, meetingCode, partnerInterests } = params
+  const logoUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/bilgi-santa-logo.png`
 
   return `
 <!DOCTYPE html>
@@ -46,7 +47,8 @@ export function createMatchNotificationEmail(params: {
     body { font-family: 'Inter', sans-serif; background-color: #0D0D0D; color: #FFFFFF; }
     .container { max-width: 600px; margin: 0 auto; padding: 40px 20px; }
     .header { text-align: center; margin-bottom: 30px; }
-    .logo { font-size: 32px; font-weight: bold; color: #E31E24; }
+    .logo { display: inline-flex; align-items: center; justify-content: center; margin-bottom: 8px; }
+    .logo img { max-width: 200px; height: auto; }
     .card { background-color: #151515; border: 1px solid #2A2A2A; border-radius: 16px; padding: 30px; margin-bottom: 20px; }
     .code { font-size: 28px; font-weight: bold; color: #FFD700; text-align: center; }
     .detail { margin: 10px 0; }
@@ -60,7 +62,9 @@ export function createMatchNotificationEmail(params: {
 <body>
   <div class="container">
     <div class="header">
-      <div class="logo">Bilgi Santa</div>
+      <div class="logo">
+        <img src="${logoUrl}" alt="Bilgi Santa" />
+      </div>
       <p>Eşleşmen hazır!</p>
     </div>
     

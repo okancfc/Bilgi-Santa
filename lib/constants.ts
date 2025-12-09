@@ -8,10 +8,10 @@ export const INTEREST_CATEGORIES = {
     items: [
       "Sohbet etmek",
       "Yeni insanlarla tanışmak",
+      "Pati Severler",
       "Partiler",
-      "Kültürel etkinlikler",
-      "Gönüllülük",
       "Topluluklar",
+      "Eslab Piyasa",
     ],
   },
   hobiler: {
@@ -32,7 +32,7 @@ export const INTEREST_CATEGORIES = {
   },
   aktifYasam: {
     label: "Aktif Yaşam",
-    items: ["Spor yapmak", "Yoga/Meditasyon", "Yürüyüş", "Bisiklet", "Dans", "Doğa gezileri", "Seyahat"],
+    items: ["Spor yapmak", "Yoga/Meditasyon", "Bebek Koşu Tayfa", "Bilgi Riders", "Dans", "Doğa gezileri", "Seyahat", "IQOS"],
   },
   akademik: {
     label: "Akademik",
