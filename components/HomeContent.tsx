@@ -11,7 +11,7 @@ import { Footer } from "@/components/Footer"
 import { UserNav } from "@/components/UserNav"
 import { MemoryUploader } from "@/components/MemoryUploader"
 
-type AuthState = "loading" | "guest" | "authed"
+type AuthState = "checking" | "guest" | "authed"
 
 interface MatchResponse {
   match: Match | null
@@ -19,12 +19,13 @@ interface MatchResponse {
 }
 
 export function HomeContent() {
-  const [authState, setAuthState] = useState<AuthState>("loading")
+  const [authState, setAuthState] = useState<AuthState>("checking")
   const [profile, setProfile] = useState<Profile | null>(null)
   const [matchData, setMatchData] = useState<MatchResponse | null>(null)
   const [availabilityCount, setAvailabilityCount] = useState<number>(0)
   const [userName, setUserName] = useState<string>("")
   const [now, setNow] = useState<number>(() => Date.now())
+  const [hydrating, setHydrating] = useState<boolean>(true)
 
   useEffect(() => {
     let isMounted = true
@@ -32,23 +33,31 @@ export function HomeContent() {
     const loadData = async () => {
       try {
         const {
-          data: { user },
-        } = await supabase.auth.getUser()
+          data: { session },
+        } = await supabase.auth.getSession()
 
-        if (!user) {
-          if (isMounted) setAuthState("guest")
+        const sessionUser = session?.user
+
+        if (!sessionUser) {
+          if (isMounted) {
+            setAuthState("guest")
+            setHydrating(false)
+          }
           return
         }
 
-        const { data: profileData } = await supabase.from("profiles").select("*").eq("user_id", user.id).single()
-        if (isMounted && profileData) {
-          setProfile(profileData)
-          setUserName(profileData.name || "")
-        } else if (isMounted) {
-          setUserName(user.email?.split("@")[0] || "")
+        if (isMounted) {
+          setAuthState("authed")
+          setUserName(sessionUser.user_metadata?.name || sessionUser.email?.split("@")[0] || "")
         }
 
-        const { data: slots } = await supabase.from("availability_slots").select("id").eq("user_id", user.id)
+        const { data: profileData } = await supabase.from("profiles").select("*").eq("user_id", sessionUser.id).single()
+        if (isMounted && profileData) {
+          setProfile(profileData)
+          setUserName(profileData.name || sessionUser.email?.split("@")[0] || "")
+        }
+
+        const { data: slots } = await supabase.from("availability_slots").select("id").eq("user_id", sessionUser.id)
         if (isMounted) {
           setAvailabilityCount(slots?.length || 0)
         }
@@ -61,10 +70,13 @@ export function HomeContent() {
           }
         }
 
-        if (isMounted) setAuthState("authed")
+        if (isMounted) setHydrating(false)
       } catch (error) {
         console.error("Home data load error:", error)
-        if (isMounted) setAuthState("guest")
+        if (isMounted) {
+          setAuthState("guest")
+          setHydrating(false)
+        }
       }
     }
 
@@ -125,14 +137,6 @@ export function HomeContent() {
 
   const memoryGateText = "Anılarını paylaşmak için yeni Anılar sayfasını kullanabilirsin."
 
-  if (authState === "loading") {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin w-8 h-8 border-2 border-bilgi-red border-t-transparent rounded-full" />
-      </div>
-    )
-  }
-
   if (authState === "guest") {
     return (
       <>
@@ -149,6 +153,12 @@ export function HomeContent() {
     <>
       <UserNav userName={formattedUserName} />
 
+      {hydrating ? (
+        <div className="pt-24 pb-12 px-4 flex items-center justify-center min-h-[60vh]">
+          <div className="animate-spin w-8 h-8 border-2 border-bilgi-red border-t-transparent rounded-full" />
+        </div>
+      ) : (
+        <>
       <section className="pt-24 pb-10 px-4">
         <div className="max-w-6xl mx-auto space-y-8">
           <div className="bg-gradient-to-r from-bilgi-red/20 via-dark-card to-gold-accent/10 border border-bilgi-red/40 rounded-2xl p-6 md:p-8 card-glow flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -410,6 +420,8 @@ export function HomeContent() {
 
       <HowWeMeetBanner />
       <Footer />
+        </>
+      )}
     </>
   )
 }

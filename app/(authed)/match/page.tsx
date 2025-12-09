@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase, type Profile, type Match } from "@/lib/supabaseClient"
 import { StarsBackground } from "@/components/StarsBackground"
-import { UserNav } from "@/components/UserNav"
 import Link from "next/link"
 
 interface MatchData {
@@ -16,7 +15,6 @@ export default function MatchPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<{ id: string } | null>(null)
-  const [userName, setUserName] = useState<string>("")
   const [matchData, setMatchData] = useState<MatchData | null>(null)
   const [now, setNow] = useState<number>(() => Date.now())
 
@@ -33,12 +31,6 @@ export default function MatchPage() {
         }
 
         setUser({ id: authUser.id })
-
-        // Load user's profile for navbar
-        const { data: profile } = await supabase.from("profiles").select("name").eq("user_id", authUser.id).single()
-        if (profile?.name) {
-          setUserName(profile.name)
-        }
 
         // Fetch match + other profile via server API (bypasses RLS)
         const response = await fetch("/api/match")
@@ -116,7 +108,6 @@ export default function MatchPage() {
   return (
     <main className="relative min-h-screen">
       <StarsBackground />
-      <UserNav userName={userName} />
 
       <div className="relative z-10 pt-24 pb-12 px-4">
         <div className="max-w-2xl mx-auto">

@@ -5,7 +5,6 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabaseClient"
 import { StarsBackground } from "@/components/StarsBackground"
-import { UserNav } from "@/components/UserNav"
 
 interface MemoryItem {
   id: string
@@ -258,7 +257,6 @@ export default function MemoriesPage() {
   return (
     <main className="relative min-h-screen">
       <StarsBackground />
-      <UserNav userName={userName} />
 
       <div className="relative z-10 pt-24 pb-16 px-4">
         <div className="max-w-5xl mx-auto space-y-6">

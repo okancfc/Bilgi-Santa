@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation"
 import { supabase, type AvailabilitySlot } from "@/lib/supabaseClient"
 import { CAMPUS_LOCATION_OPTIONS, HOURLY_TIME_OPTIONS, SANTRAL_CAMPUS } from "@/lib/constants"
 import { StarsBackground } from "@/components/StarsBackground"
-import { UserNav } from "@/components/UserNav"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -47,7 +46,6 @@ export default function AvailabilityPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [user, setUser] = useState<{ id: string } | null>(null)
-  const [userName, setUserName] = useState<string>("")
   const [slots, setSlots] = useState<AvailabilitySlot[]>([])
   const { startDate, endDate } = getAllowedDateWindow()
   const defaultStart = HOURLY_TIME_OPTIONS[0]?.value || "09:00"
@@ -72,13 +70,6 @@ export default function AvailabilityPage() {
         }
 
         setUser({ id: authUser.id })
-
-        // Load profile for nav
-        const { data: profile } = await supabase.from("profiles").select("name").eq("user_id", authUser.id).single()
-
-        if (profile?.name) {
-          setUserName(profile.name)
-        }
 
         // Load existing slots
         const { data: existingSlots } = await supabase
@@ -201,7 +192,6 @@ export default function AvailabilityPage() {
   return (
     <main className="relative min-h-screen">
       <StarsBackground />
-      <UserNav userName={userName} />
 
       <div className="relative z-10 pt-24 pb-12 px-4">
         <div className="max-w-2xl mx-auto">

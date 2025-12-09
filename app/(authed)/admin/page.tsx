@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabaseClient"
 import { ADMIN_EMAILS } from "@/lib/constants"
 import { StarsBackground } from "@/components/StarsBackground"
-import { UserNav } from "@/components/UserNav"
 import { Button } from "@/components/ui/button"
 
 interface Stats {
@@ -29,7 +28,6 @@ export default function AdminPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
-  const [userName, setUserName] = useState<string>("")
   const [stats, setStats] = useState<Stats>({
     totalUsers: 0,
     completedProfiles: 0,
@@ -65,13 +63,6 @@ export default function AdminPage() {
         }
 
         setIsAdmin(true)
-
-        // Load user name
-        const { data: profile } = await supabase.from("profiles").select("name").eq("user_id", user.id).single()
-
-        if (profile?.name) {
-          setUserName(profile.name)
-        }
 
         // Load stats - counts via client (may be limited by RLS)
         const [profilesRes, slotsRes, matchesRes] = await Promise.all([
@@ -227,7 +218,6 @@ export default function AdminPage() {
   return (
     <main className="relative min-h-screen">
       <StarsBackground />
-      <UserNav userName={userName} />
 
       <div className="relative z-10 pt-24 pb-12 px-4">
         <div className="max-w-6xl mx-auto">

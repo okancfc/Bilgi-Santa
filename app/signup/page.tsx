@@ -8,6 +8,7 @@ import Link from "next/link"
 import { supabase } from "@/lib/supabaseClient"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -313,48 +314,66 @@ export default function SignupPage() {
               </div>
 
               <div className="space-y-3 rounded-xl border border-border bg-dark-bg/50 p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">Sorumluluk Reddi ve Açık Rıza Metni</p>
-                    <p className="text-xs text-muted-foreground">
-                      Lütfen aşağıdaki koşulları dikkatlice okuyup onaylayın. Onay olmadan hesap açılamaz.
-                    </p>
-                  </div>
-                </div>
-
-                <ScrollArea className="h-64 w-full rounded-lg border border-border bg-dark-bg/60 p-4">
-                  <div className="space-y-4 text-sm">
-                    <div className="space-y-1">
-                      <p className="text-foreground font-semibold">
-                        Bilgi Santa Kullanım Koşulları ve Sorumluluk Reddi
-                      </p>
+                <Collapsible>
+                  <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border border-border bg-dark-bg/70 px-4 py-3 text-left transition-colors hover:bg-dark-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-bilgi-red/60">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Sorumluluk Reddi ve Açık Rıza Metni</p>
                       <p className="text-xs text-muted-foreground">
-                        Bu platformu kullanarak tüm riskleri ve sonuçları üstlendiğinizi, hesap oluşturma ve
-                        katılımlara ilişkin her türlü sorumluluğun size ait olduğunu kabul edersiniz.
+                        Lütfen aşağıdaki koşulları dikkatlice okuyup onaylayın. Onay olmadan hesap açılmaz.
                       </p>
                     </div>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="transition-transform data-[state=open]:rotate-180"
+                    >
+                      <path d="M6 9l6 6 6-6" />
+                    </svg>
+                  </CollapsibleTrigger>
 
-                    {LIABILITY_SECTIONS.map((section) => (
-                      <div key={section.title} className="space-y-2">
-                        <p className="text-sm font-semibold text-foreground">{section.title}</p>
-                        <ul className="list-disc space-y-1 pl-5 text-xs text-muted-foreground">
-                          {section.points.map((point) => (
-                            <li key={point}>{point}</li>
-                          ))}
-                        </ul>
+                  <CollapsibleContent className="mt-3">
+                    <ScrollArea className="h-64 w-full rounded-lg border border-border bg-dark-bg/60 p-4">
+                      <div className="space-y-4 text-sm">
+                        <div className="space-y-1">
+                          <p className="text-foreground font-semibold">
+                            Bilgi Santa Kullanım Koşulları ve Sorumluluk Reddi
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Bu platformu kullanarak tüm riskleri ve sonuçları üstlendiğinizi, hesap oluşturma ve
+                            katılımlara ilişkin her türlü sorumluluğun size ait olduğunu kabul edersiniz.
+                          </p>
+                        </div>
+
+                        {LIABILITY_SECTIONS.map((section) => (
+                          <div key={section.title} className="space-y-2">
+                            <p className="text-sm font-semibold text-foreground">{section.title}</p>
+                            <ul className="list-disc space-y-1 pl-5 text-xs text-muted-foreground">
+                              {section.points.map((point) => (
+                                <li key={point}>{point}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold text-foreground">Onay Beyanı</p>
+                          <p className="text-xs text-muted-foreground">
+                            Hesap oluşturma adımına devam ederek yukarıdaki tüm maddeleri okuduğunuzu, anladığınızı ve
+                            eksiksiz şekilde kabul ettiğinizi; platformu ve geliştiricilerini her türlü iddia, talep ve
+                            sorumluluktan feragat ettiğinizi beyan edersiniz.
+                          </p>
+                        </div>
                       </div>
-                    ))}
-
-                    <div className="space-y-1">
-                      <p className="text-sm font-semibold text-foreground">Onay Beyanı</p>
-                      <p className="text-xs text-muted-foreground">
-                        Hesap oluşturma adımına devam ederek yukarıdaki tüm maddeleri okuduğunuzu, anladığınızı ve
-                        eksiksiz şekilde kabul ettiğinizi; platformu ve geliştiricilerini her türlü iddia, talep ve
-                        sorumluluktan feragat ettiğinizi beyan edersiniz.
-                      </p>
-                    </div>
-                  </div>
-                </ScrollArea>
+                    </ScrollArea>
+                  </CollapsibleContent>
+                </Collapsible>
 
                 <div className="flex flex-row items-start gap-3 flex-wrap">
                   <Checkbox

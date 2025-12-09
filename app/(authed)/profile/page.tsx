@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation"
 import { supabase, type Profile } from "@/lib/supabaseClient"
 import { CLASS_YEARS } from "@/lib/constants"
 import { StarsBackground } from "@/components/StarsBackground"
-import { UserNav } from "@/components/UserNav"
 import { InterestSelector } from "@/components/InterestSelector"
 import { GiftPreferenceSelector } from "@/components/GiftPreferenceSelector"
 import { Button } from "@/components/ui/button"
@@ -235,7 +234,6 @@ export default function ProfilePage() {
   return (
     <main className="relative min-h-screen">
       <StarsBackground />
-      <UserNav userName={profile.name} />
 
       <div className="relative z-10 pt-24 pb-12 px-4 space-y-8">
         <div className="max-w-2xl mx-auto">
