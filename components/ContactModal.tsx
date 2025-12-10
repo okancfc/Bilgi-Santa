@@ -142,7 +142,8 @@ function ContactForm({ variant, onClose }: ContactFormProps) {
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               required
-              className="mt-1 bg-dark-bg border-border"
+              className="mt-1 bg-dark-bg border-border   text-sm md:text-base
+    placeholder:text-xs md:placeholder:text-sm"
               placeholder="Adınız Soyadınız"
             />
           </div>
@@ -155,7 +156,8 @@ function ContactForm({ variant, onClose }: ContactFormProps) {
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               required
-              className="mt-1 bg-dark-bg border-border"
+              className="mt-1 bg-dark-bg border-border text-sm md:text-base
+    placeholder:text-xs md:placeholder:text-sm"
               placeholder="ornek@bilgiedu.net"
             />
           </div>
@@ -168,7 +170,8 @@ function ContactForm({ variant, onClose }: ContactFormProps) {
               onChange={(e) => setFormData({ ...formData, message: e.target.value })}
               required
               rows={4}
-              className="mt-1 bg-dark-bg border-border resize-none"
+              className="mt-1 bg-dark-bg border-border resize-none text-sm md:text-base
+    placeholder:text-xs md:placeholder:text-sm"
               placeholder="Mesajını buraya yaz..."
             />
           </div>
