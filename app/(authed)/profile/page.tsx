@@ -41,9 +41,8 @@ export default function ProfilePage() {
       value === "kiz"
         ? "border-pink-500/50 bg-pink-500/15 text-pink-100 shadow-[0_10px_25px_rgba(236,72,153,0.35)]"
         : "border-blue-500/50 bg-blue-500/15 text-blue-100 shadow-[0_10px_25px_rgba(59,130,246,0.35)]"
-    return `flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium transition-all ${
-      profile.gender === value ? activeStyles : "border-border bg-dark-bg hover:border-bilgi-red/50 text-muted-foreground"
-    }`
+    return `flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium transition-all ${profile.gender === value ? activeStyles : "border-border bg-dark-bg hover:border-bilgi-red/50 text-muted-foreground"
+      }`
   }
 
   useEffect(() => {
@@ -56,10 +55,10 @@ export default function ProfilePage() {
           error: authError,
         } = await supabase.auth.getUser()
 
-        console.log("📥 Auth yanıtı:", { 
-          user: authUser?.id, 
+        console.log("📥 Auth yanıtı:", {
+          user: authUser?.id,
           email: authUser?.email,
-          error: authError?.message 
+          error: authError?.message
         })
 
         if (authError) {
@@ -84,9 +83,9 @@ export default function ProfilePage() {
           .eq("user_id", authUser.id)
           .single()
 
-        console.log("📥 Profil sorgu sonucu:", { 
-          exists: !!existingProfile, 
-          error: profileError?.message 
+        console.log("📥 Profil sorgu sonucu:", {
+          exists: !!existingProfile,
+          error: profileError?.message
         })
 
         if (existingProfile) {
@@ -97,9 +96,9 @@ export default function ProfilePage() {
           console.log("  - Interests:", existingProfile.interests?.length || 0)
           console.log("  - Gift Preferences:", existingProfile.gift_preferences)
           console.log("  - Favorite Things:", existingProfile.favorite_things?.length || 0)
-          
+
           setProfile(existingProfile)
-          
+
           // Parse gift preferences if stored as comma-separated string
           if (existingProfile.gift_preferences) {
             const prefs = existingProfile.gift_preferences.split(",").map((s: string) => s.trim())
@@ -109,7 +108,7 @@ export default function ProfilePage() {
         } else {
           console.log("⚠️ Profil bulunamadı, yeni profil oluşturuluyor")
           console.log("Metadata name:", authUser.user_metadata?.name)
-          
+
           // Create a new profile
           setProfile((prev) => ({
             ...prev,
@@ -117,7 +116,7 @@ export default function ProfilePage() {
             email: authUser.email,
           }))
         }
-        
+
         console.log("✅ Profil yükleme tamamlandı")
       } catch (error) {
         console.error("💥 Profil yükleme hatası:", error)
@@ -134,17 +133,17 @@ export default function ProfilePage() {
     e.preventDefault()
     console.log("💾 Profil kaydetme başladı")
     console.log("👤 User state:", user)
-    
+
     if (!user) {
       console.error("❌ User state boş!")
       console.error("Bu bir bug - sayfayı yenileyip tekrar deneyin")
-      setMessage({ 
-        type: "error", 
-        text: "Oturum hatası. Lütfen sayfayı yenileyip tekrar deneyin." 
+      setMessage({
+        type: "error",
+        text: "Oturum hatası. Lütfen sayfayı yenileyip tekrar deneyin."
       })
       return
     }
-    
+
     console.log("✅ User ID:", user.id)
     console.log("✅ User Email:", user.email)
 
@@ -154,7 +153,7 @@ export default function ProfilePage() {
     // Validation
     console.log("🔍 Form validasyonu başlıyor...")
     const missingFields: string[] = []
-    
+
     if (!profile.name || profile.name.trim() === "") {
       missingFields.push("İsim Soyisim")
     }
@@ -187,9 +186,9 @@ export default function ProfilePage() {
     if (missingFields.length > 0) {
       console.error("❌ EKSİK ALANLAR:")
       missingFields.forEach(field => console.error(`   - ${field}`))
-      setMessage({ 
-        type: "error", 
-        text: `Lütfen şu alanları doldurun: ${missingFields.join(", ")}` 
+      setMessage({
+        type: "error",
+        text: `Lütfen şu alanları doldurun: ${missingFields.join(", ")}`
       })
       setSaving(false)
       return
@@ -311,16 +310,15 @@ export default function ProfilePage() {
                         onClick={() => setProfile({ ...profile, gender: option.value })}
                         aria-pressed={profile.gender === option.value}
                       >
-                      <span
-                        className={`h-2.5 w-2.5 rounded-full ${
-                          profile.gender === option.value
+                        <span
+                          className={`h-2.5 w-2.5 rounded-full ${profile.gender === option.value
                             ? option.value === "kiz"
                               ? "bg-pink-400"
                               : "bg-blue-400"
                             : "bg-border"
-                        }`}
-                      />
-                      {option.label}
+                            }`}
+                        />
+                        {option.label}
                       </button>
                     ))}
                   </div>
@@ -446,7 +444,9 @@ export default function ProfilePage() {
                 value={profile.about_me || ""}
                 onChange={(e) => setProfile({ ...profile, about_me: e.target.value })}
                 rows={4}
-                className="bg-dark-bg border-border resize-none"
+                className="bg-dark-bg border-border resize-none placeholder:text-sm 
+             md:placeholder:text-base 
+             lg:placeholder:text-lg"
                 placeholder="Merhaba! Ben... (en fazla 500 karakter)"
                 maxLength={500}
               />
@@ -456,18 +456,17 @@ export default function ProfilePage() {
             {/* Message */}
             {message && (
               <div
-                className={`p-4 rounded-lg ${
-                  message.type === "success"
-                    ? "bg-green-500/10 border border-green-500/30 text-green-500"
-                    : "bg-red-500/10 border border-red-500/30 text-red-500"
-                }`}
+                className={`p-4 rounded-lg ${message.type === "success"
+                  ? "bg-green-500/10 border border-green-500/30 text-green-500"
+                  : "bg-red-500/10 border border-red-500/30 text-red-500"
+                  }`}
               >
                 {message.text}
               </div>
             )}
 
             {/* Submit Button */}
-            <Button type="submit" disabled={saving} className="w-full btn-bilgi text-lg py-6">
+            <Button type="submit" disabled={saving} className="w-full btn-bilgi text-lg">
               {saving ? (
                 <span className="flex items-center gap-2">
                   <svg
