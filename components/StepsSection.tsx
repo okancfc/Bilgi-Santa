@@ -12,7 +12,7 @@ const steps = [
   {
     number: 3,
     title: "Müsaitliğini Belirle",
-    description: "Buluşabileceğin gün ve saatleri seç, tercih ettiğin kampüsü belirt.",
+    description: "Buluşabileceğin gün ve saatleri seç, tercih ettiğin lokasyonu belirt.",
   },
   {
     number: 4,
@@ -28,9 +28,9 @@ const steps = [
 
 export function StepsSection() {
   return (
-    <section className="py-20 px-4">
+    <section className="py-20 mb-24 px-4">
       <div className="max-w-5xl mx-auto">
-        <div className="text-center mb-16">
+        <div className="text-center mb-20">
           <h2 className="font-heading text-3xl md:text-4xl font-bold mb-4">
             <span className="gradient-text">Nasıl Çalışır?</span>
           </h2>

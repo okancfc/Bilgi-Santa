@@ -138,14 +138,30 @@ export function HomeContent() {
   const memoryGateText = "Anılarını paylaşmak için yeni Anılar sayfasını kullanabilirsin."
 
   if (authState === "guest") {
+    // 100dvh keeps snap sections aligned when the mobile browser UI resizes the viewport.
+    const snapSectionStyle = { minHeight: "100dvh" }
+
     return (
-      <>
-        <Hero />
-        <Countdown />
-        <StepsSection />
-        <HowWeMeetBanner />
-        <Footer />
-      </>
+      <div
+        className="h-screen overflow-y-auto snap-y snap-mandatory overscroll-y-none"
+        style={{ height: "100dvh" }}
+      >
+        <div className="snap-start snap-always min-h-screen flex flex-col" style={snapSectionStyle}>
+          <Hero />
+        </div>
+        <div className="snap-start snap-always min-h-screen flex flex-col justify-center" style={snapSectionStyle}>
+          <Countdown />
+        </div>
+        <div className="snap-start snap-always min-h-screen flex flex-col justify-center" style={snapSectionStyle}>
+          <StepsSection />
+        </div>
+        <div className="snap-start snap-always min-h-screen flex flex-col justify-center" style={snapSectionStyle}>
+          <HowWeMeetBanner fullHeight />
+        </div>
+        <div className="snap-start snap-always min-h-screen flex flex-col justify-end" style={snapSectionStyle}>
+          <Footer />
+        </div>
+      </div>
     )
   }
 
