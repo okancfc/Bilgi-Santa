@@ -7,7 +7,7 @@ import bilgiSantaLogo from "@/public/bilgi-santa-logo.png"
 export function Hero() {
   return (
     <section className="relative min-h-[90vh] flex flex-col items-center justify-start pb-20 overflow-hidden">
-      <div className="relative lg:w-[50vw] w-[100vw] ml-[calc(50%-50vw)] h-60 lg:h-96 mb-8 overflow-hidden">
+      <div className="relative lg:w-[50vw] w-[100vw] ml-[calc(50%-50vw)] h-60 lg:h-96 mb-2 overflow-hidden">
         <Image
           src={heroBg}
           alt="Hero Background"
@@ -37,14 +37,7 @@ export function Hero() {
           aria-hidden
         />
       </div>
-      <div className="max-w-4xl mx-auto text-center z-10 px-4 sm:px-6">
-        {/* Year badge */}
-        <div className="inline-block mb-6">
-          <span className="px-4 py-2 bg-bilgi-red/20 border border-bilgi-red/30 rounded-full text-bilgi-red font-medium text-sm">
-            2026
-          </span>
-        </div>
-
+      <div className="relative max-w-4xl mx-auto text-center z-10 px-4 sm:px-6">
         {/* Main title */}
         <h1 className="mb-6 flex justify-center">
           <span className="sr-only">Bilgi Santa</span>
@@ -65,7 +58,7 @@ export function Hero() {
 
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-          <Link href="/signup" className="btn-bilgi px-8 py-4 text-lg rounded-xl inline-flex items-center gap-2">
+          <Link href="/signup" className="btn-bilgi px-8 py-2 text-lg rounded-xl w-full inline-flex justify-center items-center gap-2">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="20"
@@ -87,7 +80,7 @@ export function Hero() {
 
           <Link
             href="/login"
-            className="px-8 py-4 text-lg rounded-xl border border-border bg-secondary/50 hover:bg-secondary transition-all duration-300 inline-flex items-center gap-2"
+            className="px-8 py-3 w-full text-lg rounded-xl border border-border bg-secondary/50 hover:bg-secondary transition-all duration-300 inline-flex items-center justify-center gap-2"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -109,8 +102,14 @@ export function Hero() {
         </div>
 
         {/* Decorative elements */}
-        <div className="absolute -top-20 -left-20 w-72 h-72 bg-bilgi-red/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-10 -right-20 w-72 h-72 bg-gold-accent/10 rounded-full blur-3xl" />
+        <div
+          className="pointer-events-none absolute -top-20 -left-20 w-72 h-72 bg-bilgi-red/10 rounded-full blur-3xl -z-10"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute bottom-10 -right-20 w-72 h-72 bg-gold-accent/10 rounded-full blur-3xl -z-10"
+          aria-hidden
+        />
       </div>
     </section>
   )
