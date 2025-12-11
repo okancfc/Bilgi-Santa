@@ -13,6 +13,7 @@ type ChatMessage = {
 type ChatResponse = {
   matchId: string | null
   selfId?: string
+  meetingCode?: string
   messages: ChatMessage[]
   error?: string
 }
@@ -22,12 +23,15 @@ export function ChatWidget() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
+  const [initialLoadDone, setInitialLoadDone] = useState(false)
   const [sending, setSending] = useState(false)
   const [matchId, setMatchId] = useState<string | null>(null)
   const [selfId, setSelfId] = useState<string | null>(null)
+  const [chatCode, setChatCode] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const endRef = useRef<HTMLDivElement | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [matchCheckDone, setMatchCheckDone] = useState(false)
 
   const isDisabled = useMemo(() => !matchId || loading, [loading, matchId])
 
@@ -35,9 +39,9 @@ export function ChatWidget() {
     requestAnimationFrame(() => endRef.current?.scrollIntoView({ behavior: "smooth" }))
   }
 
-  const fetchMessages = async () => {
+  const fetchMessages = async (isInitial = false) => {
     try {
-      setLoading(true)
+      if (isInitial && !initialLoadDone) setLoading(true)
       const res = await fetch("/api/chat")
       const data = (await res.json()) as ChatResponse
       if (!res.ok) {
@@ -46,14 +50,18 @@ export function ChatWidget() {
       }
       setMatchId(data.matchId)
       setSelfId(data.selfId || null)
+      const suffix = data.meetingCode?.split("-")?.[1] || data.meetingCode || null
+      setChatCode(suffix)
       setMessages(data.messages || [])
       setError(null)
+      setInitialLoadDone(true)
       scrollToBottom()
     } catch (e) {
       console.error("Chat fetch error:", e)
       setError("Sohbet yüklenemedi")
     } finally {
-      setLoading(false)
+      if (isInitial) setLoading(false)
+      setMatchCheckDone(true)
     }
   }
 
@@ -63,8 +71,13 @@ export function ChatWidget() {
   }
 
   useEffect(() => {
+    // Prefetch to decide button visibility and warm cache
+    fetchMessages(false)
+  }, [])
+
+  useEffect(() => {
     if (open) {
-      fetchMessages()
+      fetchMessages(true)
       startPolling()
     } else if (pollRef.current) {
       clearInterval(pollRef.current)
@@ -79,6 +92,37 @@ export function ChatWidget() {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  useEffect(() => {
+    if (!open) return
+
+    const body = document.body
+    const html = document.documentElement
+    const scrollY = window.scrollY
+
+    const previous = {
+      bodyOverflow: body.style.overflow,
+      bodyPosition: body.style.position,
+      bodyTop: body.style.top,
+      bodyWidth: body.style.width,
+      htmlOverflow: html.style.overflow,
+    }
+
+    body.style.overflow = "hidden"
+    body.style.position = "fixed"
+    body.style.top = `-${scrollY}px`
+    body.style.width = "100%"
+    html.style.overflow = "hidden"
+
+    return () => {
+      body.style.overflow = previous.bodyOverflow
+      body.style.position = previous.bodyPosition
+      body.style.top = previous.bodyTop
+      body.style.width = previous.bodyWidth
+      html.style.overflow = previous.htmlOverflow
+      window.scrollTo(0, scrollY)
+    }
+  }, [open])
 
   const handleSend = async () => {
     if (!input.trim() || !matchId) return
@@ -106,13 +150,17 @@ export function ChatWidget() {
     }
   }
 
+  if (!matchCheckDone || matchId === null) {
+    return null
+  }
+
   return (
     <>
       <div className="fixed bottom-6 right-6 z-40">
         <button
           type="button"
           onClick={() => setOpen((prev) => !prev)}
-          className="w-14 h-14 rounded-full bg-bilgi-red text-white shadow-lg shadow-bilgi-red/40 flex items-center justify-center hover:scale-105 transition-transform focus:outline-none focus:ring-2 focus:ring-gold-accent focus:ring-offset-2 focus:ring-offset-background"
+          className="flex items-center gap-2 px-4 py-3 rounded-xl bg-bilgi-red text-white shadow-lg shadow-bilgi-red/40 hover:shadow-bilgi-red/50 hover:scale-[1.01] transition-all focus:outline-none focus:ring-2 focus:ring-gold-accent focus:ring-offset-2 focus:ring-offset-background"
           aria-label="Eşinle sohbet et"
         >
           <svg
@@ -123,19 +171,22 @@ export function ChatWidget() {
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="w-6 h-6"
+            className="w-5 h-5"
           >
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
+          <span className="text-sm font-semibold">Eşinle Chatleş</span>
         </button>
       </div>
 
       {open && (
-        <div className="fixed bottom-24 right-6 z-40 w-[90vw] max-w-sm bg-dark-card border border-border rounded-2xl shadow-2xl card-glow flex flex-col">
+        <div className="fixed bottom-24 right-6 z-40 w-[92vw] max-w-md bg-dark-card border border-border rounded-2xl shadow-2xl card-glow flex flex-col h-[520px] max-h-[80vh] overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <div>
               <p className="text-xs text-muted-foreground">Anonim sohbet</p>
-              <p className="font-heading font-bold">Eşinle Chat</p>
+              <p className="font-heading font-bold">
+                {chatCode ? `CHAT-${chatCode}` : "Eşinle Chat"}
+              </p>
             </div>
             <button
               type="button"
@@ -147,9 +198,11 @@ export function ChatWidget() {
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto max-h-96 px-4 py-3 space-y-2 bg-dark-bg/60">
-            {loading ? (
-              <p className="text-sm text-muted-foreground">Sohbet yükleniyor…</p>
+          <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3 bg-dark-bg/60">
+            {loading && !initialLoadDone ? (
+              <div className="flex items-center justify-center py-6">
+                <div className="w-8 h-8 rounded-full border-2 border-bilgi-red border-t-transparent animate-spin" aria-label="Yükleniyor" />
+              </div>
             ) : matchId === null ? (
               <p className="text-sm text-muted-foreground">Önce bir eşleşme al, sonra sohbet başlayacak.</p>
             ) : messages.length === 0 ? (
@@ -186,22 +239,30 @@ export function ChatWidget() {
             <div className="flex items-center gap-2">
               <input
                 type="text"
+                inputMode="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleSend()
                 }}
                 placeholder={isDisabled ? "Eşleşme bekleniyor" : "Mesaj yaz..."}
-                className="flex-1 bg-dark-bg border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-bilgi-red disabled:opacity-60"
+                className="flex-1 bg-dark-bg border border-border rounded-xl px-3 py-2 text-base leading-6 focus:outline-none focus:ring-2 focus:ring-bilgi-red disabled:opacity-60 min-h-[44px]"
                 disabled={isDisabled || sending}
               />
               <button
                 type="button"
                 onClick={handleSend}
                 disabled={isDisabled || sending || !input.trim()}
-                className="bg-bilgi-red text-white px-3 py-2 rounded-xl text-sm font-semibold shadow-md shadow-bilgi-red/30 disabled:opacity-60 disabled:cursor-not-allowed hover:shadow-bilgi-red/50"
+                className="bg-bilgi-red text-white px-3 py-2 rounded-xl text-sm font-semibold shadow-md shadow-bilgi-red/30 disabled:opacity-60 disabled:cursor-not-allowed hover:shadow-bilgi-red/50 min-h-[44px]"
               >
-                Gönder
+                {sending ? (
+                  <span className="flex items-center gap-2">
+                    <span className="inline-flex w-4 h-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin" />
+                    Gönderiliyor
+                  </span>
+                ) : (
+                  "Gönder"
+                )}
               </button>
             </div>
           </div>

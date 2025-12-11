@@ -5,7 +5,7 @@ async function getLatestMatchForUser(userId: string) {
   const admin = createSupabaseAdminClient()
   const { data, error } = await admin
     .from("matches")
-    .select("*")
+    .select("*, meeting_code")
     .or(`user_a.eq.${userId},user_b.eq.${userId}`)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -45,6 +45,7 @@ export async function GET() {
 
     return NextResponse.json({
       matchId: match.id,
+      meetingCode: match.meeting_code,
       messages: messages || [],
       selfId: user.id,
     })
