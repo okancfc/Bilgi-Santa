@@ -14,12 +14,14 @@ interface CandidatePair {
   score: number
   overlapMinutes: number
   campusMatch: boolean
+  locationMatch: boolean
   crossGender: boolean
   overlappingSlot: {
     date: string
     start: string
     end: string
     location: string | null
+    locationMatch: boolean
   }
 }
 
@@ -87,6 +89,31 @@ function minutesToTime(totalMinutes: number): string {
 }
 
 /**
+ * Build meeting location info from two slots (campus + optional detailed location)
+ */
+function buildLocation(
+  slotA: AvailabilitySlot,
+  slotB: AvailabilitySlot,
+): { location: string | null; locationMatch: boolean } {
+  const campus = slotA.campus || slotB.campus || null
+  const rawA = slotA.location?.trim()
+  const rawB = slotB.location?.trim()
+  const locationMatch = Boolean(rawA && rawB && rawA.toLowerCase() === rawB.toLowerCase())
+  const locationDetail = locationMatch ? rawA : rawA || rawB || null
+
+  if (locationDetail && campus) {
+    return { location: `${campus} - ${locationDetail}`, locationMatch }
+  }
+  if (locationDetail) {
+    return { location: locationDetail, locationMatch }
+  }
+  if (campus) {
+    return { location: campus, locationMatch: false }
+  }
+  return { location: null, locationMatch }
+}
+
+/**
  * Returns true if both users have gender set and they are different
  */
 function isCrossGender(profileA: Profile, profileB: Profile): boolean {
@@ -100,7 +127,15 @@ function isCrossGender(profileA: Profile, profileB: Profile): boolean {
 function findBestOverlappingSlot(
   slotsA: AvailabilitySlot[],
   slotsB: AvailabilitySlot[],
-): { date: string; start: string; end: string; location: string | null; minutes: number; campusMatch: boolean } | null {
+): {
+  date: string
+  start: string
+  end: string
+  location: string | null
+  minutes: number
+  campusMatch: boolean
+  locationMatch: boolean
+} | null {
   let best: {
     date: string
     start: string
@@ -108,6 +143,7 @@ function findBestOverlappingSlot(
     location: string | null
     minutes: number
     campusMatch: boolean
+    locationMatch: boolean
   } | null = null
 
   for (const slotA of slotsA) {
@@ -127,6 +163,7 @@ function findBestOverlappingSlot(
       if (overlapMinutes < 30) continue
 
       const campusMatch = Boolean(slotA.campus && slotB.campus && slotA.campus === slotB.campus)
+      const { location, locationMatch } = buildLocation(slotA, slotB)
 
       const startHours = Math.floor(overlapStart / 60)
       const startMins = overlapStart % 60
@@ -137,9 +174,10 @@ function findBestOverlappingSlot(
         date: slotA.slot_date,
         start: `${String(startHours).padStart(2, "0")}:${String(startMins).padStart(2, "0")}`,
         end: `${String(endHours).padStart(2, "0")}:${String(endMins).padStart(2, "0")}`,
-        location: slotA.campus || slotB.campus || slotA.location || slotB.location,
+        location,
         minutes: overlapMinutes,
         campusMatch,
+        locationMatch,
       }
 
       // Choose the slot with longest overlap, prefer campus match on ties
@@ -172,6 +210,7 @@ function findRelaxedSlot(
   gapMinutes: number
   campusMatch: boolean
   dateDiffMinutes: number
+  locationMatch: boolean
 } | null {
   let best: {
     date: string
@@ -182,6 +221,7 @@ function findRelaxedSlot(
     gapMinutes: number
     campusMatch: boolean
     dateDiffMinutes: number
+    locationMatch: boolean
   } | null = null
 
   for (const slotA of slotsA) {
@@ -205,7 +245,7 @@ function findRelaxedSlot(
       const meetingEndMinutes = meetingStartMinutes + Math.max(meetingDuration, 15)
 
       const campusMatch = Boolean(slotA.campus && slotB.campus && slotA.campus === slotB.campus)
-      const location = slotA.campus || slotB.campus || slotA.location || slotB.location
+      const { location, locationMatch } = buildLocation(slotA, slotB)
       const meetingDate = dateA <= dateB ? slotA.slot_date : slotB.slot_date
 
       const candidate = {
@@ -217,6 +257,7 @@ function findRelaxedSlot(
         gapMinutes: Math.max(gapMinutes, 0),
         campusMatch,
         dateDiffMinutes,
+        locationMatch,
       }
 
       if (
@@ -307,8 +348,9 @@ export async function runMatching(
       // Overlap weight increases with duration (up to 2 hours cap)
       const overlapWeight = Math.min(overlappingSlot.minutes / 120, 1)
       const campusBonus = overlappingSlot.campusMatch ? 0.1 : 0
+      const locationBonus = overlappingSlot.locationMatch ? 0.05 : 0
 
-      const score = interestScore * 0.5 + giftScore * 0.2 + overlapWeight * 0.3 + campusBonus
+      const score = interestScore * 0.5 + giftScore * 0.2 + overlapWeight * 0.3 + campusBonus + locationBonus
       const crossGender = isCrossGender(userA.profile, userB.profile)
 
       const candidate: CandidatePair = {
@@ -317,6 +359,7 @@ export async function runMatching(
         score,
         overlapMinutes: overlappingSlot.minutes,
         campusMatch: overlappingSlot.campusMatch,
+        locationMatch: overlappingSlot.locationMatch,
         crossGender,
         overlappingSlot,
       }
@@ -384,21 +427,20 @@ export async function runMatching(
 
   // First pass: cross-gender, Second pass: same/unspecified
   greedyAssign(crossGenderCandidates)
-  greedyAssign(sameGenderCandidates)
 
-  // 8. Fallback pass: match remaining users with closest-in-time slots (even without full overlap)
-  const unmatchedUsers = users.filter((u) => !matchedUsers.has(u.userId))
+  const runRelaxedPass = () => {
+    const pool = users.filter((u) => !matchedUsers.has(u.userId))
+    if (pool.length <= 1) return
 
-  if (unmatchedUsers.length > 1) {
     const relaxedCrossCandidates: CandidatePair[] = []
     const relaxedSameCandidates: CandidatePair[] = []
     const relaxedCrossCounts = new Map<string, number>()
     const relaxedSameCounts = new Map<string, number>()
 
-    for (let i = 0; i < unmatchedUsers.length; i++) {
-      for (let j = i + 1; j < unmatchedUsers.length; j++) {
-        const userA = unmatchedUsers[i]
-        const userB = unmatchedUsers[j]
+    for (let i = 0; i < pool.length; i++) {
+      for (let j = i + 1; j < pool.length; j++) {
+        const userA = pool[i]
+        const userB = pool[j]
 
         const relaxedSlot = findRelaxedSlot(userA.slots, userB.slots)
         if (!relaxedSlot) continue
@@ -414,8 +456,10 @@ export async function runMatching(
         const datePenalty = Math.min(relaxedSlot.dateDiffMinutes / (60 * 24 * 3), 1) // penalize >3 days apart
         const timeScore = overlapFactor > 0 ? overlapFactor : 1 - gapPenalty
         const campusBonus = relaxedSlot.campusMatch ? 0.1 : 0
+        const locationBonus = relaxedSlot.locationMatch ? 0.05 : 0
 
-        const score = interestScore * 0.45 + giftScore * 0.2 + timeScore * 0.25 + campusBonus - datePenalty * 0.1
+        const score =
+          interestScore * 0.45 + giftScore * 0.2 + timeScore * 0.25 + campusBonus + locationBonus - datePenalty * 0.1
         const crossGender = isCrossGender(userA.profile, userB.profile)
 
         const candidate: CandidatePair = {
@@ -424,12 +468,14 @@ export async function runMatching(
           score,
           overlapMinutes: relaxedSlot.minutes,
           campusMatch: relaxedSlot.campusMatch,
+          locationMatch: relaxedSlot.locationMatch,
           crossGender,
           overlappingSlot: {
             date: relaxedSlot.date,
             start: relaxedSlot.start,
             end: relaxedSlot.end,
             location: relaxedSlot.location || "Koordinasyon gerekli",
+            locationMatch: relaxedSlot.locationMatch,
           },
         }
 
@@ -475,6 +521,15 @@ export async function runMatching(
     fallbackAssign(relaxedCrossCandidates)
     fallbackAssign(relaxedSameCandidates)
   }
+
+  // 8. Cross-gender relaxed attempt before any same-gender pairing
+  runRelaxedPass()
+
+  // 9. Same/unspecified gender with overlapping slots
+  greedyAssign(sameGenderCandidates)
+
+  // 10. Final relaxed pass for any remaining users
+  runRelaxedPass()
 
   console.log(`[Matching] Created ${finalMatches.length} matches`)
 
