@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase, type Profile } from "@/lib/supabaseClient"
 import { CLASS_YEARS } from "@/lib/constants"
+import departmentsData from "@/departments.json"
 import { StarsBackground } from "@/components/StarsBackground"
 import { InterestSelector } from "@/components/InterestSelector"
 import { GiftPreferenceSelector } from "@/components/GiftPreferenceSelector"
@@ -14,6 +15,8 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { MemoryUploader } from "@/components/MemoryUploader"
+
+const DEPARTMENTS: string[] = (departmentsData as string[]).slice().sort((a, b) => a.localeCompare(b, "tr"))
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -323,15 +326,23 @@ export default function ProfilePage() {
 
                 <div>
                   <Label htmlFor="department">Bölüm</Label>
-                  <Input
+                  <select
                     id="department"
-                    type="text"
                     value={profile.department || ""}
                     onChange={(e) => setProfile({ ...profile, department: e.target.value })}
                     required
-                    className="mt-1 bg-dark-bg border-border"
-                    placeholder="Örn: Bilgisayar Mühendisliği"
-                  />
+                    className="mt-1 w-full px-3 py-2 bg-dark-bg border border-border rounded-md text-foreground"
+                  >
+                    <option value="">Seçin</option>
+                    {profile.department && !DEPARTMENTS.includes(profile.department) && (
+                      <option value={profile.department}>{profile.department} (listede yok)</option>
+                    )}
+                    {DEPARTMENTS.map((dept) => (
+                      <option key={dept} value={dept}>
+                        {dept}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
