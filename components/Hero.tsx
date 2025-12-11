@@ -1,7 +1,7 @@
 import Image from "next/image"
 import Link from "next/link"
 
-import heroBg from "@/public/hero-bg2-min.webp"
+import heroBg from "@/public/HeroBackgroundImage.png"
 import bilgiSantaLogo from "@/public/bilgi-santa-logo.png"
 
 export function Hero() {
