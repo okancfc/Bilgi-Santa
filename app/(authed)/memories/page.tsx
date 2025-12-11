@@ -26,6 +26,8 @@ export default function MemoriesPage() {
   const [partnerName, setPartnerName] = useState<string>("")
   const [memories, setMemories] = useState<MemoryItem[]>([])
   const [memoriesLoading, setMemoriesLoading] = useState(false)
+  const [fetchingMore, setFetchingMore] = useState(false)
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [memoryMessage, setMemoryMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [memoryCaption, setMemoryCaption] = useState("")
   const [memoryFile, setMemoryFile] = useState<File | null>(null)
@@ -34,6 +36,8 @@ export default function MemoriesPage() {
   const [lightbox, setLightbox] = useState<{ url: string; caption?: string | null; user_name?: string } | null>(null)
   const [fitImages, setFitImages] = useState<Record<string, boolean>>({})
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const listRef = useRef<HTMLDivElement | null>(null)
+  const loaderRef = useRef<HTMLDivElement | null>(null)
 
   const firstName = (name?: string | null) => {
     if (!name) return "Anonim"
@@ -84,22 +88,41 @@ export default function MemoriesPage() {
     [],
   )
 
-  const fetchMemories = async () => {
-    setMemoriesLoading(true)
+  const fetchMemories = async (cursor?: string, append = false) => {
+    if (append && fetchingMore) return
+
+    if (append) {
+      setFetchingMore(true)
+    } else {
+      setMemoriesLoading(true)
+      setMemoryMessage(null)
+    }
+
     try {
-      const response = await fetch("/api/memories")
+      const query = cursor ? `/api/memories?cursor=${encodeURIComponent(cursor)}` : "/api/memories"
+      const response = await fetch(query)
       if (!response.ok) {
         console.error("Memories fetch error:", await response.text())
         setMemoryMessage({ type: "error", text: "Anılar yüklenemedi." })
         return
       }
-      const data = (await response.json()) as { items: MemoryItem[] }
-      setMemories(data.items || [])
+      const data = (await response.json()) as { items: MemoryItem[]; nextCursor?: string | null }
+      setNextCursor(data.nextCursor ?? null)
+      setMemories((prev) => {
+        if (!append) return data.items || []
+        const existingIds = new Set(prev.map((m) => m.id))
+        const newItems = (data.items || []).filter((m) => !existingIds.has(m.id))
+        return [...prev, ...newItems]
+      })
     } catch (error) {
       console.error("Memories load error:", error)
       setMemoryMessage({ type: "error", text: "Anılar yüklenirken bir sorun oluştu." })
     } finally {
-      setMemoriesLoading(false)
+      if (append) {
+        setFetchingMore(false)
+      } else {
+        setMemoriesLoading(false)
+      }
     }
   }
 
@@ -108,6 +131,28 @@ export default function MemoriesPage() {
       fetchMemories()
     }
   }, [loading])
+
+  useEffect(() => {
+    const loaderEl = loaderRef.current
+    const rootEl = listRef.current
+
+    if (!loaderEl || !rootEl) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && nextCursor && !memoriesLoading && !fetchingMore) {
+            fetchMemories(nextCursor, true)
+          }
+        })
+      },
+      { root: rootEl, rootMargin: "200px 0px 200px 0px", threshold: 0.1 },
+    )
+
+    observer.observe(loaderEl)
+
+    return () => observer.disconnect()
+  }, [nextCursor, memoriesLoading, fetchingMore])
 
   const hasPairMemory = useMemo(() => {
     if (!userId) return false
@@ -275,6 +320,7 @@ export default function MemoriesPage() {
           <div
             className="mt-16 h-[calc(100dvh-4rem)] overflow-y-auto snap-y snap-mandatory no-scrollbar"
             style={scrollContainerStyle}
+            ref={listRef}
           >
             {memories.map((memory) => {
               const isFitted = fitImages[memory.id]
@@ -305,9 +351,23 @@ export default function MemoriesPage() {
                       e.stopPropagation()
                       setFitImages((prev) => ({ ...prev, [memory.id]: !isFitted }))
                     }}
-                    className="px-4 py-2 rounded-full bg-black/60 text-white border border-border text-sm hover:bg-black/70 transition-colors"
+                    className="w-11 h-11 rounded-full bg-black/60 text-white border border-border hover:bg-black/70 transition-colors flex items-center justify-center"
+                    aria-label={isFitted ? "Kırp" : "Sığdır"}
                   >
-                    {isFitted ? "Kırp" : "Sığdır"}
+                    {isFitted ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="11" cy="11" r="7" />
+                        <line x1="11" y1="8" x2="11" y2="14" />
+                        <line x1="8" y1="11" x2="14" y2="11" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                      </svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="11" cy="11" r="7" />
+                        <line x1="8" y1="11" x2="14" y2="11" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                      </svg>
+                    )}
                   </button>
                 </div>
                 <div className="absolute inset-x-0 bottom-0 p-4 flex items-end justify-between gap-3">
@@ -343,6 +403,14 @@ export default function MemoriesPage() {
                 </div>
               </div>
             )})}
+
+            {nextCursor && (
+              <div ref={loaderRef} className="h-12 flex items-center justify-center text-muted-foreground">
+                {fetchingMore && (
+                  <div className="animate-spin w-7 h-7 border-2 border-bilgi-red border-t-transparent rounded-full" />
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

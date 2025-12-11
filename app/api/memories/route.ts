@@ -10,7 +10,7 @@ const parseMeetingDateTime = (meeting_date?: string | null, meeting_start?: stri
   return Number.isNaN(date.getTime()) ? null : date
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const supabase = await createSupabaseServerClient()
     const {
@@ -22,19 +22,33 @@ export async function GET() {
     }
 
     const admin = createSupabaseAdminClient()
+    const { searchParams } = new URL(request.url)
+    const cursor = searchParams.get("cursor")
+    const limitParam = Number.parseInt(searchParams.get("limit") ?? "12", 10)
+    const pageSize = Number.isNaN(limitParam) ? 12 : Math.min(Math.max(limitParam, 1), 50)
 
-    const { data: memories, error: memoriesError } = await admin
+    let query = admin
       .from("memories")
       .select("id, user_id, image_url, caption, created_at, likes_count")
       .order("created_at", { ascending: false })
-      .limit(50)
+      .limit(pageSize + 1)
+
+    if (cursor) {
+      query = query.lt("created_at", cursor)
+    }
+
+    const { data: memories, error: memoriesError } = await query
 
     if (memoriesError) {
       console.error("Memories fetch error:", memoriesError)
       return NextResponse.json({ error: "Failed to load memories" }, { status: 500 })
     }
 
-    const userIds = Array.from(new Set((memories || []).map((m) => m.user_id)))
+    const hasMore = (memories?.length || 0) > pageSize
+    const pageItems = hasMore ? (memories || []).slice(0, pageSize) : memories || []
+    const nextCursor = hasMore ? pageItems[pageItems.length - 1]?.created_at || null : null
+
+    const userIds = Array.from(new Set(pageItems.map((m) => m.user_id)))
     const profileMap = new Map<string, string>()
 
     if (userIds.length > 0) {
@@ -44,7 +58,7 @@ export async function GET() {
       })
     }
 
-    const ids = memories?.map((m) => m.id) || []
+    const ids = pageItems.map((m) => m.id)
     let likedIds: string[] = []
 
     if (ids.length > 0) {
@@ -58,7 +72,7 @@ export async function GET() {
     }
 
     const items =
-      memories?.map((m) => ({
+      pageItems.map((m) => ({
         id: m.id,
         user_id: m.user_id,
         image_url: m.image_url,
@@ -69,7 +83,7 @@ export async function GET() {
         liked_by_me: likedIds.includes(m.id),
       })) || []
 
-    return NextResponse.json({ items })
+    return NextResponse.json({ items, nextCursor })
   } catch (error) {
     console.error("Memories GET error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
