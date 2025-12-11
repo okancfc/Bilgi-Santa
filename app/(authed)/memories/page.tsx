@@ -28,12 +28,12 @@ export default function MemoriesPage() {
   const [memoriesLoading, setMemoriesLoading] = useState(false)
   const [fetchingMore, setFetchingMore] = useState(false)
   const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [showSwipeHint, setShowSwipeHint] = useState(false)
   const [memoryMessage, setMemoryMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [memoryCaption, setMemoryCaption] = useState("")
   const [memoryFile, setMemoryFile] = useState<File | null>(null)
   const [uploadingMemory, setUploadingMemory] = useState(false)
   const [now, setNow] = useState<number>(() => Date.now())
-  const [lightbox, setLightbox] = useState<{ url: string; caption?: string | null; user_name?: string } | null>(null)
   const [fitImages, setFitImages] = useState<Record<string, boolean>>({})
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
@@ -108,6 +108,7 @@ export default function MemoriesPage() {
       }
       const data = (await response.json()) as { items: MemoryItem[]; nextCursor?: string | null }
       setNextCursor(data.nextCursor ?? null)
+      setShowSwipeHint((prev) => prev || (!append && (data.items?.length || 0) > 1))
       setMemories((prev) => {
         if (!append) return data.items || []
         const existingIds = new Set(prev.map((m) => m.id))
@@ -153,6 +154,21 @@ export default function MemoriesPage() {
 
     return () => observer.disconnect()
   }, [nextCursor, memoriesLoading, fetchingMore])
+
+  useEffect(() => {
+    const el = listRef.current
+    if (!el || !showSwipeHint) return
+
+    const handleScroll = () => {
+      if (el.scrollTop > 10) {
+        setShowSwipeHint(false)
+        el.removeEventListener("scroll", handleScroll)
+      }
+    }
+
+    el.addEventListener("scroll", handleScroll)
+    return () => el.removeEventListener("scroll", handleScroll)
+  }, [showSwipeHint])
 
   const hasPairMemory = useMemo(() => {
     if (!userId) return false
@@ -313,8 +329,16 @@ export default function MemoriesPage() {
             <div className="animate-spin w-8 h-8 border-2 border-bilgi-red border-t-transparent rounded-full" />
           </div>
         ) : memories.length === 0 ? (
-          <div className="mt-16 h-[calc(100dvh-4rem)] flex items-center justify-center border border-dashed border-border rounded-xl mx-4 text-center text-muted-foreground">
-            Henüz paylaşım yok. İlk fotoğrafı sen yükle!
+          <div className="mt-16 h-[calc(100dvh-4rem)] px-6 flex items-center justify-center">
+            <div className="max-w-md w-full text-center bg-gradient-to-b from-dark-card/80 to-dark-bg/80 border border-border rounded-3xl shadow-xl px-6 py-10 space-y-4">
+              <div className="w-14 h-14 mx-auto rounded-full bg-bilgi-red/15 text-bilgi-red flex items-center justify-center text-2xl">
+                📸
+              </div>
+              <h3 className="font-heading text-2xl font-bold text-white">Henüz anı yok</h3>
+              <p className="text-muted-foreground">
+                Buluşma fotoğrafınızı yükledikçe burada tam ekran görünecek. İlk anıyı sen ekle ve akışı başlat!
+              </p>
+            </div>
           </div>
         ) : (
           <div
@@ -328,15 +352,6 @@ export default function MemoriesPage() {
               <div
                 key={memory.id}
                 className="snap-start snap-always h-[calc(100dvh-4rem)] relative group"
-                role="button"
-                tabIndex={0}
-                onClick={() => setLightbox({ url: memory.image_url, caption: memory.caption, user_name: getDisplayName(memory) })}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault()
-                    setLightbox({ url: memory.image_url, caption: memory.caption, user_name: getDisplayName(memory) })
-                  }
-                }}
               >
                 <img
                   src={memory.image_url}
@@ -411,34 +426,25 @@ export default function MemoriesPage() {
                 )}
               </div>
             )}
+
+            {showSwipeHint && (
+              <div className="pointer-events-none absolute inset-x-0 bottom-10 flex flex-col items-center gap-2 text-white drop-shadow">
+                <div className="px-3 py-1 rounded-full bg-black/60 text-xs uppercase tracking-wide">Swipe</div>
+                <svg
+                  className="w-6 h-6 animate-bounce"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth="2"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25 12 15.75 4.5 8.25" />
+                </svg>
+              </div>
+            )}
           </div>
         )}
       </div>
-
-      {lightbox && (
-        <div
-          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={() => setLightbox(null)}
-        >
-          <div
-            className="relative max-w-4xl w-full max-h-[85vh] bg-dark-card border border-border rounded-2xl overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <img src={lightbox.url} alt={lightbox.caption || "Anı"} className="w-full h-full object-contain bg-black" />
-            <button
-              className="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center"
-              onClick={() => setLightbox(null)}
-              aria-label="Kapat"
-            >
-              ✕
-            </button>
-            <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 space-y-1">
-              {lightbox.user_name && <p className="text-sm font-semibold text-white">{lightbox.user_name}</p>}
-              {lightbox.caption && <p className="text-xs text-gray-200">{lightbox.caption}</p>}
-            </div>
-          </div>
-        </div>
-      )}
     </main>
   )
 }
