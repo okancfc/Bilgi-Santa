@@ -32,6 +32,7 @@ export default function MemoriesPage() {
   const [uploadingMemory, setUploadingMemory] = useState(false)
   const [now, setNow] = useState<number>(() => Date.now())
   const [lightbox, setLightbox] = useState<{ url: string; caption?: string | null; user_name?: string } | null>(null)
+  const [fitImages, setFitImages] = useState<Record<string, boolean>>({})
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const firstName = (name?: string | null) => {
@@ -255,94 +256,95 @@ export default function MemoriesPage() {
   }
 
   return (
-    <main className="relative min-h-screen">
+    <main className="relative min-h-screen flex flex-col">
       <StarsBackground />
 
-      <div className="relative z-10 pt-24 pb-16 px-4">
-        <div className="max-w-5xl mx-auto space-y-6">
-          {/* Upload form kaldırıldı - artık Anasayfa ve Profil üzerinden yükleniyor */}
+      <div className="relative z-10 flex-1">
+        {/* Upload form kaldırıldı - artık Anasayfa ve Profil üzerinden yükleniyor */}
 
-          <div className="">
-            <div className="mb-4">
-              <p className="text-xs uppercase tracking-wide text-gold-accent">Keşfet</p>
-              <h3 className="font-heading text-xl font-bold">Anı Akışı</h3>
-            </div>
-
-            {memoriesLoading ? (
-              <div className="flex items-center justify-center py-10 text-muted-foreground">
-                <span className="sr-only">Anılar yükleniyor...</span>
-                <div className="animate-spin w-8 h-8 border-2 border-bilgi-red border-t-transparent rounded-full" />
-              </div>
-            ) : memories.length === 0 ? (
-              <div className="border border-dashed border-border rounded-xl p-6 text-center text-muted-foreground">
-                Henüz paylaşım yok. İlk fotoğrafı sen yükle!
-              </div>
-            ) : (
-              <div className="max-h-[70vh] overflow-y-auto no-scrollbar" style={scrollContainerStyle}>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-10 sm:gap-6">
-                  {memories.map((memory) => (
-                    <div
-                      key={memory.id}
-                      className="relative group overflow-hidden rounded-xl border border-border bg-dark-bg/60"
+        {memoriesLoading ? (
+          <div className="mt-16 h-[calc(100dvh-4rem)] flex items-center justify-center text-muted-foreground">
+            <span className="sr-only">Anılar yükleniyor...</span>
+            <div className="animate-spin w-8 h-8 border-2 border-bilgi-red border-t-transparent rounded-full" />
+          </div>
+        ) : memories.length === 0 ? (
+          <div className="mt-16 h-[calc(100dvh-4rem)] flex items-center justify-center border border-dashed border-border rounded-xl mx-4 text-center text-muted-foreground">
+            Henüz paylaşım yok. İlk fotoğrafı sen yükle!
+          </div>
+        ) : (
+          <div
+            className="mt-16 h-[calc(100dvh-4rem)] overflow-y-auto snap-y snap-mandatory no-scrollbar"
+            style={scrollContainerStyle}
+          >
+            {memories.map((memory) => {
+              const isFitted = fitImages[memory.id]
+              return (
+              <div
+                key={memory.id}
+                className="snap-start snap-always h-[calc(100dvh-4rem)] relative group"
+                role="button"
+                tabIndex={0}
+                onClick={() => setLightbox({ url: memory.image_url, caption: memory.caption, user_name: getDisplayName(memory) })}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault()
+                    setLightbox({ url: memory.image_url, caption: memory.caption, user_name: getDisplayName(memory) })
+                  }
+                }}
+              >
+                <img
+                  src={memory.image_url}
+                  alt={memory.caption || "Buluşma anısı"}
+                  className={`w-full h-full ${isFitted ? "object-contain bg-black" : "object-cover"}`}
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/20 to-black/80 pointer-events-none" />
+                <div className="absolute top-4 right-4 z-10">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setFitImages((prev) => ({ ...prev, [memory.id]: !isFitted }))
+                    }}
+                    className="px-4 py-2 rounded-full bg-black/60 text-white border border-border text-sm hover:bg-black/70 transition-colors"
+                  >
+                    {isFitted ? "Kırp" : "Sığdır"}
+                  </button>
+                </div>
+                <div className="absolute inset-x-0 bottom-0 p-4 flex items-end justify-between gap-3">
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <p className="text-base font-semibold text-white truncate">{getDisplayName(memory)}</p>
+                    {memory.caption && <p className="text-sm text-gray-200 line-clamp-2 break-words">{memory.caption}</p>}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggleLike(memory.id)
+                    }}
+                    className={`flex-shrink-0 flex items-center gap-1 px-4 py-2 rounded-full border text-sm transition-colors whitespace-nowrap ${
+                      memory.liked_by_me ? "bg-bilgi-red/25 border-bilgi-red/20 text-white" : "bg-black/40 border-border text-white"
+                    }`}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill={memory.liked_by_me ? "currentColor" : "none"}
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                     >
-                      <div
-                        className="aspect-square w-full overflow-hidden cursor-zoom-in"
-                        role="button"
-                        tabIndex={0}
-                        onClick={() =>
-                          setLightbox({ url: memory.image_url, caption: memory.caption, user_name: getDisplayName(memory) })
-                        }
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault()
-                            setLightbox({ url: memory.image_url, caption: memory.caption, user_name: getDisplayName(memory) })
-                          }
-                        }}
-                      >
-                        <img
-                          src={memory.image_url}
-                          alt={memory.caption || "Buluşma anısı"}
-                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        />
-                      </div>
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/40 to-transparent opacity-90 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                      <div className="absolute inset-x-0 bottom-0 p-3 flex items-end justify-between gap-2">
-                        <div className="flex-1 min-w-0 space-y-1">
-                          <p className="text-sm font-semibold text-white truncate">{getDisplayName(memory)}</p>
-                          {memory.caption && <p className="text-xs text-gray-200 line-clamp-2 break-words">{memory.caption}</p>}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => toggleLike(memory.id)}
-                          className={`flex-shrink-0 flex items-center gap-1 px-3 py-2 rounded-full border text-sm transition-colors whitespace-nowrap ${
-                            memory.liked_by_me
-                              ? "bg-bilgi-red/25 border-bilgi-red/20 text-white"
-                              : "bg-dark-bg/20 border-border text-white"
-                          }`}
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill={memory.liked_by_me ? "currentColor" : "none"}
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
-                          </svg>
-                          <span className="w-3">{memory.likes_count}</span>
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                      <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+                    </svg>
+                    <span className="w-3 text-center">{memory.likes_count}</span>
+                  </button>
                 </div>
               </div>
-            )}
+            )})}
           </div>
-        </div>
+        )}
       </div>
 
       {lightbox && (

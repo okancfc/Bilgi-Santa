@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { usePathname } from "next/navigation"
 import type React from "react"
 
 import { UserNav } from "@/components/UserNav"
@@ -9,6 +10,7 @@ import { ChatWidget } from "@/components/ChatWidget"
 
 export default function AuthedLayout({ children }: { children: React.ReactNode }) {
   const [userName, setUserName] = useState<string>("")
+  const pathname = usePathname()
 
   useEffect(() => {
     let isMounted = true
@@ -38,11 +40,13 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
     }
   }, [])
 
+  const shouldShowChat = !pathname?.startsWith("/memories")
+
   return (
     <>
       <UserNav userName={userName} />
       {children}
-      <ChatWidget />
+      {shouldShowChat && <ChatWidget />}
     </>
   )
 }
