@@ -37,6 +37,38 @@ export function ChatWidget() {
   const listRef = useRef<HTMLDivElement | null>(null)
 
   const isDisabled = useMemo(() => !matchId || loading, [loading, matchId])
+  const getLastSeenKey = useCallback(
+    (mId?: string | null, sId?: string | null) => (mId && sId ? `chat:lastSeen:${mId}:${sId}` : null),
+    [],
+  )
+
+  const readPersistedLastSeen = useCallback(
+    (mId?: string | null, sId?: string | null) => {
+      const key = getLastSeenKey(mId, sId)
+      if (!key) return null
+      try {
+        return localStorage.getItem(key)
+      } catch (err) {
+        console.error("Read last seen error:", err)
+        return null
+      }
+    },
+    [getLastSeenKey],
+  )
+
+  const persistLastSeen = useCallback(
+    (messageId: string | null, mId?: string | null, sId?: string | null) => {
+      if (!messageId) return
+      const key = getLastSeenKey(mId, sId)
+      if (!key) return
+      try {
+        localStorage.setItem(key, messageId)
+      } catch (err) {
+        console.error("Persist last seen error:", err)
+      }
+    },
+    [getLastSeenKey],
+  )
 
   const scrollToBottom = useCallback(
     (behavior: ScrollBehavior = "smooth") => {
@@ -68,14 +100,18 @@ export function ChatWidget() {
 
       const latestMsg = data.messages?.[data.messages.length - 1]
       if (latestMsg) {
-        const userSelfId = data.selfId ?? selfId
-        const fromOther = userSelfId ? latestMsg.sender_id !== userSelfId : false
-        const isNew = latestMsg.id !== lastSeenMessageId
+        const effectiveSelfId = data.selfId ?? selfId
+        const effectiveMatchId = data.matchId ?? matchId
+        const fromOther = effectiveSelfId ? latestMsg.sender_id !== effectiveSelfId : false
+        const storedSeen = readPersistedLastSeen(effectiveMatchId, effectiveSelfId)
+        const seenBaseline = lastSeenMessageId || storedSeen
+        const isNew = latestMsg.id !== seenBaseline
         if (!open && fromOther && isNew) {
           setHasUnread(true)
         }
         if (open) {
           setLastSeenMessageId(latestMsg.id)
+          persistLastSeen(latestMsg.id, effectiveMatchId, effectiveSelfId)
         }
       }
 
@@ -111,6 +147,14 @@ export function ChatWidget() {
   }, [startPolling])
 
   useEffect(() => {
+    if (!matchId || !selfId) return
+    const stored = readPersistedLastSeen(matchId, selfId)
+    if (stored) {
+      setLastSeenMessageId(stored)
+    }
+  }, [matchId, readPersistedLastSeen, selfId])
+
+  useEffect(() => {
     if (open) {
       scrollToBottom("auto")
       fetchMessages(true)
@@ -125,11 +169,13 @@ export function ChatWidget() {
   useEffect(() => {
     if (open) {
       if (messages.length > 0) {
-        setLastSeenMessageId(messages[messages.length - 1].id)
+        const latestId = messages[messages.length - 1].id
+        setLastSeenMessageId(latestId)
+        persistLastSeen(latestId, matchId, selfId)
       }
       setHasUnread(false)
     }
-  }, [open, messages])
+  }, [matchId, messages, open, persistLastSeen, selfId])
 
   useEffect(() => {
     if (!open) return
