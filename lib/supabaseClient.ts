@@ -60,6 +60,14 @@ export interface Match {
   created_at: string
 }
 
+export interface ChatMessage {
+  id: string
+  match_id: string
+  sender_id: string
+  content: string
+  created_at: string
+}
+
 export interface ContactMessage {
   id: string
   name: string

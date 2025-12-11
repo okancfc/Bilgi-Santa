@@ -47,6 +47,15 @@ CREATE TABLE IF NOT EXISTS matches (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Chat messages table - anonymous chat between matched users
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  match_id UUID NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+  sender_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Contact messages table - stores contact form submissions
 CREATE TABLE IF NOT EXISTS contact_messages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -113,6 +122,8 @@ CREATE INDEX IF NOT EXISTS idx_availability_slots_date ON availability_slots(slo
 CREATE INDEX IF NOT EXISTS idx_matches_user_a ON matches(user_a);
 CREATE INDEX IF NOT EXISTS idx_matches_user_b ON matches(user_b);
 CREATE INDEX IF NOT EXISTS idx_matches_code ON matches(meeting_code);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_match_id ON chat_messages(match_id);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_sender_id ON chat_messages(sender_id);
 CREATE INDEX IF NOT EXISTS idx_memories_user_id ON memories(user_id);
 CREATE INDEX IF NOT EXISTS idx_memory_likes_memory_id ON memory_likes(memory_id);
 CREATE INDEX IF NOT EXISTS idx_memory_likes_user_id ON memory_likes(user_id);
@@ -121,6 +132,7 @@ CREATE INDEX IF NOT EXISTS idx_memory_likes_user_id ON memory_likes(user_id);
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE availability_slots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE matches ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contact_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE memories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE memory_likes ENABLE ROW LEVEL SECURITY;
@@ -148,6 +160,24 @@ CREATE POLICY "Users can delete their own availability" ON availability_slots
 -- Matches policies (users can see matches they're part of)
 CREATE POLICY "Users can view their own matches" ON matches
   FOR SELECT USING (auth.uid() = user_a OR auth.uid() = user_b);
+
+-- Chat messages policies (only matched users can read/write)
+CREATE POLICY "Matched users can view messages" ON chat_messages
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM matches m
+      WHERE m.id = match_id AND (m.user_a = auth.uid() OR m.user_b = auth.uid())
+    )
+  );
+
+CREATE POLICY "Matched users can send messages" ON chat_messages
+  FOR INSERT WITH CHECK (
+    sender_id = auth.uid() AND
+    EXISTS (
+      SELECT 1 FROM matches m
+      WHERE m.id = match_id AND (m.user_a = auth.uid() OR m.user_b = auth.uid())
+    )
+  );
 
 -- Contact messages policy (anyone can insert, only admins can view)
 CREATE POLICY "Anyone can submit contact messages" ON contact_messages

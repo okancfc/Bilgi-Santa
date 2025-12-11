@@ -45,7 +45,11 @@ export async function GET() {
       return NextResponse.json({ error: "Failed to load matched profile" }, { status: 500 })
     }
 
-    return NextResponse.json({ match, otherProfile })
+    const sanitizedProfile = otherProfile
+      ? { ...otherProfile, email: null, name: null }
+      : null
+
+    return NextResponse.json({ match, otherProfile: sanitizedProfile })
   } catch (error) {
     console.error("Match API error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

@@ -5,6 +5,7 @@ import type React from "react"
 
 import { UserNav } from "@/components/UserNav"
 import { supabase } from "@/lib/supabaseClient"
+import { ChatWidget } from "@/components/ChatWidget"
 
 export default function AuthedLayout({ children }: { children: React.ReactNode }) {
   const [userName, setUserName] = useState<string>("")
@@ -41,6 +42,7 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
     <>
       <UserNav userName={userName} />
       {children}
+      <ChatWidget />
     </>
   )
 }
