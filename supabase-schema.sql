@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS profiles (
   is_active BOOLEAN DEFAULT true,
   profile_completed BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT profiles_gender_required CHECK (profile_completed = false OR gender IS NOT NULL)
 );
 
 -- Availability slots table - stores user availability for meetings

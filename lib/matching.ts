@@ -14,6 +14,7 @@ interface CandidatePair {
   score: number
   overlapMinutes: number
   campusMatch: boolean
+  crossGender: boolean
   overlappingSlot: {
     date: string
     start: string
@@ -83,6 +84,13 @@ function minutesToTime(totalMinutes: number): string {
   const hours = Math.floor(normalized / 60)
   const minutes = normalized % 60
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`
+}
+
+/**
+ * Returns true if both users have gender set and they are different
+ */
+function isCrossGender(profileA: Profile, profileB: Profile): boolean {
+  return Boolean(profileA.gender && profileB.gender && profileA.gender !== profileB.gender)
 }
 
 /**
@@ -276,8 +284,10 @@ export async function runMatching(
   console.log(`[Matching] Found ${users.length} active users with availability`)
 
   // 5. Generate all candidate pairs with overlapping availability
-  const candidates: CandidatePair[] = []
-  const candidateCounts = new Map<string, number>()
+  const crossGenderCandidates: CandidatePair[] = []
+  const sameGenderCandidates: CandidatePair[] = []
+  const crossCounts = new Map<string, number>()
+  const sameCounts = new Map<string, number>()
 
   for (let i = 0; i < users.length; i++) {
     for (let j = i + 1; j < users.length; j++) {
@@ -299,69 +309,91 @@ export async function runMatching(
       const campusBonus = overlappingSlot.campusMatch ? 0.1 : 0
 
       const score = interestScore * 0.5 + giftScore * 0.2 + overlapWeight * 0.3 + campusBonus
+      const crossGender = isCrossGender(userA.profile, userB.profile)
 
-      candidates.push({
+      const candidate: CandidatePair = {
         userA,
         userB,
         score,
         overlapMinutes: overlappingSlot.minutes,
         campusMatch: overlappingSlot.campusMatch,
+        crossGender,
         overlappingSlot,
-      })
+      }
 
-      candidateCounts.set(userA.userId, (candidateCounts.get(userA.userId) || 0) + 1)
-      candidateCounts.set(userB.userId, (candidateCounts.get(userB.userId) || 0) + 1)
+      if (crossGender) {
+        crossGenderCandidates.push(candidate)
+        crossCounts.set(userA.userId, (crossCounts.get(userA.userId) || 0) + 1)
+        crossCounts.set(userB.userId, (crossCounts.get(userB.userId) || 0) + 1)
+      } else {
+        sameGenderCandidates.push(candidate)
+        sameCounts.set(userA.userId, (sameCounts.get(userA.userId) || 0) + 1)
+        sameCounts.set(userB.userId, (sameCounts.get(userB.userId) || 0) + 1)
+      }
     }
   }
 
-  console.log(`[Matching] Found ${candidates.length} candidate pairs`)
+  const totalCandidates = crossGenderCandidates.length + sameGenderCandidates.length
+  console.log(`[Matching] Found ${totalCandidates} candidate pairs (${crossGenderCandidates.length} cross-gender, ${sameGenderCandidates.length} same/unspecified)`)
 
   // 6. Sort candidates to prioritize users with fewer options, then by score and overlap length
-  candidates.sort((a, b) => {
-    const minOptionsA = Math.min(candidateCounts.get(a.userA.userId) || 0, candidateCounts.get(a.userB.userId) || 0)
-    const minOptionsB = Math.min(candidateCounts.get(b.userA.userId) || 0, candidateCounts.get(b.userB.userId) || 0)
+  const sortCandidates = (arr: CandidatePair[], counts: Map<string, number>) =>
+    arr.sort((a, b) => {
+      const minOptionsA = Math.min(counts.get(a.userA.userId) || 0, counts.get(a.userB.userId) || 0)
+      const minOptionsB = Math.min(counts.get(b.userA.userId) || 0, counts.get(b.userB.userId) || 0)
 
-    if (minOptionsA !== minOptionsB) return minOptionsA - minOptionsB
-    if (b.score !== a.score) return b.score - a.score
-    return b.overlapMinutes - a.overlapMinutes
-  })
+      if (minOptionsA !== minOptionsB) return minOptionsA - minOptionsB
+      if (b.score !== a.score) return b.score - a.score
+      return b.overlapMinutes - a.overlapMinutes
+    })
+
+  sortCandidates(crossGenderCandidates, crossCounts)
+  sortCandidates(sameGenderCandidates, sameCounts)
 
   // 7. Greedy matching - each user can only be matched once
   const matchedUsers = new Set<string>()
   const finalMatches: Omit<Match, "id" | "created_at">[] = []
   let fallbackMatches = 0
 
-  for (const candidate of candidates) {
-    const { userA, userB, overlappingSlot } = candidate
+  const greedyAssign = (candidates: CandidatePair[]) => {
+    for (const candidate of candidates) {
+      const { userA, userB, overlappingSlot } = candidate
 
-    // Skip if either user is already matched
-    if (matchedUsers.has(userA.userId) || matchedUsers.has(userB.userId)) {
-      continue
+      // Skip if either user is already matched
+      if (matchedUsers.has(userA.userId) || matchedUsers.has(userB.userId)) {
+        continue
+      }
+
+      // Create the match
+      const match: Omit<Match, "id" | "created_at"> = {
+        user_a: userA.userId,
+        user_b: userB.userId,
+        meeting_date: overlappingSlot.date,
+        meeting_start: overlappingSlot.start,
+        meeting_end: overlappingSlot.end,
+        meeting_location: overlappingSlot.location,
+        meeting_code: generateMeetingCode(),
+        status: "pending",
+      }
+
+      finalMatches.push(match)
+      matchedUsers.add(userA.userId)
+      matchedUsers.add(userB.userId)
     }
-
-    // Create the match
-    const match: Omit<Match, "id" | "created_at"> = {
-      user_a: userA.userId,
-      user_b: userB.userId,
-      meeting_date: overlappingSlot.date,
-      meeting_start: overlappingSlot.start,
-      meeting_end: overlappingSlot.end,
-      meeting_location: overlappingSlot.location,
-      meeting_code: generateMeetingCode(),
-      status: "pending",
-    }
-
-    finalMatches.push(match)
-    matchedUsers.add(userA.userId)
-    matchedUsers.add(userB.userId)
   }
+
+  // First pass: cross-gender, Second pass: same/unspecified
+  greedyAssign(crossGenderCandidates)
+  greedyAssign(sameGenderCandidates)
 
   // 8. Fallback pass: match remaining users with closest-in-time slots (even without full overlap)
   const unmatchedUsers = users.filter((u) => !matchedUsers.has(u.userId))
 
   if (unmatchedUsers.length > 1) {
-    const relaxedCandidates: CandidatePair[] = []
-    const relaxedCounts = new Map<string, number>()
+    const relaxedCrossCandidates: CandidatePair[] = []
+    const relaxedSameCandidates: CandidatePair[] = []
+    const relaxedCrossCounts = new Map<string, number>()
+    const relaxedSameCounts = new Map<string, number>()
 
     for (let i = 0; i < unmatchedUsers.length; i++) {
       for (let j = i + 1; j < unmatchedUsers.length; j++) {
@@ -384,60 +416,69 @@ export async function runMatching(
         const campusBonus = relaxedSlot.campusMatch ? 0.1 : 0
 
         const score = interestScore * 0.45 + giftScore * 0.2 + timeScore * 0.25 + campusBonus - datePenalty * 0.1
+        const crossGender = isCrossGender(userA.profile, userB.profile)
 
-        relaxedCandidates.push({
+        const candidate: CandidatePair = {
           userA,
           userB,
           score,
           overlapMinutes: relaxedSlot.minutes,
           campusMatch: relaxedSlot.campusMatch,
+          crossGender,
           overlappingSlot: {
             date: relaxedSlot.date,
             start: relaxedSlot.start,
             end: relaxedSlot.end,
             location: relaxedSlot.location || "Koordinasyon gerekli",
           },
-        })
+        }
 
-        relaxedCounts.set(userA.userId, (relaxedCounts.get(userA.userId) || 0) + 1)
-        relaxedCounts.set(userB.userId, (relaxedCounts.get(userB.userId) || 0) + 1)
+        if (crossGender) {
+          relaxedCrossCandidates.push(candidate)
+          relaxedCrossCounts.set(userA.userId, (relaxedCrossCounts.get(userA.userId) || 0) + 1)
+          relaxedCrossCounts.set(userB.userId, (relaxedCrossCounts.get(userB.userId) || 0) + 1)
+        } else {
+          relaxedSameCandidates.push(candidate)
+          relaxedSameCounts.set(userA.userId, (relaxedSameCounts.get(userA.userId) || 0) + 1)
+          relaxedSameCounts.set(userB.userId, (relaxedSameCounts.get(userB.userId) || 0) + 1)
+        }
       }
     }
 
-    relaxedCandidates.sort((a, b) => {
-      const minOptionsA = Math.min(relaxedCounts.get(a.userA.userId) || 0, relaxedCounts.get(a.userB.userId) || 0)
-      const minOptionsB = Math.min(relaxedCounts.get(b.userA.userId) || 0, relaxedCounts.get(b.userB.userId) || 0)
+    sortCandidates(relaxedCrossCandidates, relaxedCrossCounts)
+    sortCandidates(relaxedSameCandidates, relaxedSameCounts)
 
-      if (minOptionsA !== minOptionsB) return minOptionsA - minOptionsB
-      if (b.score !== a.score) return b.score - a.score
-      return b.overlapMinutes - a.overlapMinutes
-    })
+    const fallbackAssign = (candidates: CandidatePair[]) => {
+      for (const candidate of candidates) {
+        const { userA, userB, overlappingSlot } = candidate
+        if (matchedUsers.has(userA.userId) || matchedUsers.has(userB.userId)) continue
 
-    for (const candidate of relaxedCandidates) {
-      const { userA, userB, overlappingSlot } = candidate
-      if (matchedUsers.has(userA.userId) || matchedUsers.has(userB.userId)) continue
+        const match: Omit<Match, "id" | "created_at"> = {
+          user_a: userA.userId,
+          user_b: userB.userId,
+          meeting_date: overlappingSlot.date,
+          meeting_start: overlappingSlot.start,
+          meeting_end: overlappingSlot.end,
+          meeting_location: overlappingSlot.location,
+          meeting_code: generateMeetingCode(),
+          status: "pending",
+        }
 
-      const match: Omit<Match, "id" | "created_at"> = {
-        user_a: userA.userId,
-        user_b: userB.userId,
-        meeting_date: overlappingSlot.date,
-        meeting_start: overlappingSlot.start,
-        meeting_end: overlappingSlot.end,
-        meeting_location: overlappingSlot.location,
-        meeting_code: generateMeetingCode(),
-        status: "pending",
+        finalMatches.push(match)
+        matchedUsers.add(userA.userId)
+        matchedUsers.add(userB.userId)
+        fallbackMatches++
       }
-
-      finalMatches.push(match)
-      matchedUsers.add(userA.userId)
-      matchedUsers.add(userB.userId)
-      fallbackMatches++
     }
+
+    // Fallback also prefers cross-gender first, then same/unspecified
+    fallbackAssign(relaxedCrossCandidates)
+    fallbackAssign(relaxedSameCandidates)
   }
 
   console.log(`[Matching] Created ${finalMatches.length} matches`)
 
-  const summary = `Matching complete: ${users.length} users, ${candidates.length} candidate pairs, ${finalMatches.length} final matches (${fallbackMatches} fallback), ${users.length - matchedUsers.size} unmatched users`
+  const summary = `Matching complete: ${users.length} users, ${totalCandidates} candidate pairs (${crossGenderCandidates.length} cross-gender), ${finalMatches.length} final matches (${fallbackMatches} fallback), ${users.length - matchedUsers.size} unmatched users`
 
   return { matches: finalMatches, summary }
 }
