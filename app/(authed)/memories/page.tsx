@@ -89,6 +89,22 @@ export default function MemoriesPage() {
     return () => clearInterval(interval)
   }, [router])
 
+  useEffect(() => {
+    const root = document.documentElement
+    const previousRootOverflow = root.style.overflow
+    const previousBodyOverflow = document.body.style.overflow
+    root.style.overflow = "hidden"
+    document.body.style.overflow = "hidden"
+    root.classList.add("no-scrollbar")
+    document.body.classList.add("no-scrollbar")
+    return () => {
+      root.style.overflow = previousRootOverflow
+      document.body.style.overflow = previousBodyOverflow
+      root.classList.remove("no-scrollbar")
+      document.body.classList.remove("no-scrollbar")
+    }
+  }, [])
+
   const meetingGateText = useMemo(
     () => "Test sürecinde fotoğraf yükleme kısıtı kaldırıldı; ileride buluşma sonrası kuralı yeniden açacağız.",
     [],
@@ -354,19 +370,19 @@ export default function MemoriesPage() {
   }
 
   return (
-    <main className="relative min-h-screen flex flex-col">
+    <main className="fixed inset-0 pt-16 overflow-hidden flex flex-col">
       <StarsBackground />
 
-      <div className="relative z-10 flex-1">
+      <div className="relative z-10 flex-1 overflow-hidden">
         {/* Upload form kaldırıldı - artık Anasayfa ve Profil üzerinden yükleniyor */}
 
         {memoriesLoading ? (
-          <div className="mt-16 h-[calc(100dvh-4rem)] flex items-center justify-center text-muted-foreground">
+          <div className="h-full flex items-center justify-center text-muted-foreground">
             <span className="sr-only">Anılar yükleniyor...</span>
             <div className="animate-spin w-8 h-8 border-2 border-bilgi-red border-t-transparent rounded-full" />
           </div>
         ) : memories.length === 0 ? (
-          <div className="mt-16 h-[calc(100dvh-4rem)] px-6 flex items-center justify-center">
+          <div className="h-full px-6 flex items-center justify-center">
             <div className="max-w-md w-full text-center bg-gradient-to-b from-dark-card/80 to-dark-bg/80 border border-border rounded-3xl shadow-xl px-6 py-10 space-y-4">
               <div className="w-14 h-14 mx-auto rounded-full bg-bilgi-red/15 text-bilgi-red flex items-center justify-center text-2xl">
                 📸
@@ -379,7 +395,7 @@ export default function MemoriesPage() {
           </div>
         ) : (
           <div
-            className="mt-16 h-[calc(100dvh-4rem)] w-full max-w-5xl mx-auto overflow-y-auto snap-y snap-mandatory no-scrollbar px-0 sm:px-4 md:px-44"
+            className="h-full w-full max-w-5xl mx-auto overflow-y-auto snap-y snap-mandatory no-scrollbar px-0 sm:px-4 md:px-44 relative"
             style={scrollContainerStyle}
             ref={listRef}
           >
@@ -487,7 +503,10 @@ export default function MemoriesPage() {
             )}
 
             {showSwipeHint && (
-              <div className="pointer-events-none absolute inset-x-0 bottom-10 flex flex-col items-center gap-2 text-white drop-shadow">
+              <div
+                className="pointer-events-none absolute left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-white drop-shadow"
+                style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 3rem)" }}
+              >
                 <div className="px-3 py-1 rounded-full bg-black/60 text-xs uppercase tracking-wide">Kaydır</div>
                 <svg
                   className="w-6 h-6 animate-bounce"
