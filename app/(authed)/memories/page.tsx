@@ -301,7 +301,8 @@ export default function MemoriesPage() {
     if (!current) return
 
     const optimistic = { ...current, liked_by_me: !current.liked_by_me, likes_count: current.likes_count + (current.liked_by_me ? -1 : 1) }
-    setMemories((prev) => sortMemories(prev.map((m) => (m.id === memoryId ? optimistic : m))))
+    // Keep existing order so the card the user is viewing doesn't jump when like count changes
+    setMemories((prev) => prev.map((m) => (m.id === memoryId ? optimistic : m)))
 
     try {
       const response = await fetch(`/api/memories/${memoryId}/like`, { method: "POST" })
@@ -310,15 +311,13 @@ export default function MemoriesPage() {
       }
       const data = (await response.json()) as { liked: boolean; likes_count: number }
       setMemories((prev) =>
-        sortMemories(
-          prev.map((m) =>
-            m.id === memoryId ? { ...m, liked_by_me: data.liked, likes_count: data.likes_count ?? m.likes_count } : m,
-          ),
+        prev.map((m) =>
+          m.id === memoryId ? { ...m, liked_by_me: data.liked, likes_count: data.likes_count ?? m.likes_count } : m,
         ),
       )
     } catch (error) {
       console.error("Like toggle error:", error)
-      setMemories((prev) => sortMemories(prev.map((m) => (m.id === memoryId ? current : m))))
+      setMemories((prev) => prev.map((m) => (m.id === memoryId ? current : m)))
       setMemoryMessage({ type: "error", text: "Beğeni güncellenemedi." })
     }
   }

@@ -296,11 +296,8 @@ export default function ProfilePage() {
                   />
                 </div>
 
-                <div>
+                <div className="grid gap-5">
                   <Label>Cinsiyet</Label>
-                  <p className="text-muted-foreground text-xs mt-1 mb-3">
-                    Eşleşme algoritmasında kullanılmaz; sadece buluşma kartında bilgi olarak görünür.
-                  </p>
                   <div className="grid grid-cols-2 gap-3">
                     {genderOptions.map((option) => (
                       <button
