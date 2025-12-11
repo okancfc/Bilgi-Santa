@@ -17,6 +17,11 @@ interface MemoryItem {
   liked_by_me: boolean
 }
 
+interface MemoriesCursor {
+  likesCount: number
+  createdAt: string
+}
+
 export default function MemoriesPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -27,7 +32,7 @@ export default function MemoriesPage() {
   const [memories, setMemories] = useState<MemoryItem[]>([])
   const [memoriesLoading, setMemoriesLoading] = useState(false)
   const [fetchingMore, setFetchingMore] = useState(false)
-  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [nextCursor, setNextCursor] = useState<MemoriesCursor | null>(null)
   const [showSwipeHint, setShowSwipeHint] = useState(false)
   const [deletingMemoryId, setDeletingMemoryId] = useState<string | null>(null)
   const [memoryMessage, setMemoryMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
@@ -89,7 +94,13 @@ export default function MemoriesPage() {
     [],
   )
 
-  const fetchMemories = async (cursor?: string, append = false) => {
+  const sortMemories = (list: MemoryItem[]) =>
+    [...list].sort((a, b) => {
+      if ((b.likes_count || 0) !== (a.likes_count || 0)) return (b.likes_count || 0) - (a.likes_count || 0)
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    })
+
+  const fetchMemories = async (cursor?: MemoriesCursor, append = false) => {
     if (append && fetchingMore) return
 
     if (append) {
@@ -100,21 +111,21 @@ export default function MemoriesPage() {
     }
 
     try {
-      const query = cursor ? `/api/memories?cursor=${encodeURIComponent(cursor)}` : "/api/memories"
+      const query = cursor ? `/api/memories?cursor=${encodeURIComponent(JSON.stringify(cursor))}` : "/api/memories"
       const response = await fetch(query)
       if (!response.ok) {
         console.error("Memories fetch error:", await response.text())
         setMemoryMessage({ type: "error", text: "Anılar yüklenemedi." })
         return
       }
-      const data = (await response.json()) as { items: MemoryItem[]; nextCursor?: string | null }
+      const data = (await response.json()) as { items: MemoryItem[]; nextCursor?: MemoriesCursor | null }
       setNextCursor(data.nextCursor ?? null)
       setShowSwipeHint((prev) => prev || (!append && (data.items?.length || 0) > 1))
       setMemories((prev) => {
-        if (!append) return data.items || []
+        if (!append) return sortMemories(data.items || [])
         const existingIds = new Set(prev.map((m) => m.id))
         const newItems = (data.items || []).filter((m) => !existingIds.has(m.id))
-        return [...prev, ...newItems]
+        return sortMemories([...prev, ...newItems])
       })
     } catch (error) {
       console.error("Memories load error:", error)
@@ -233,7 +244,7 @@ export default function MemoriesPage() {
       }
 
       const { item } = (await response.json()) as { item: MemoryItem }
-      setMemories((prev) => [item, ...prev])
+      setMemories((prev) => sortMemories([item, ...prev]))
       setMemoryCaption("")
       setMemoryFile(null)
       if (fileInputRef.current) fileInputRef.current.value = ""
@@ -274,7 +285,7 @@ export default function MemoriesPage() {
     if (!current) return
 
     const optimistic = { ...current, liked_by_me: !current.liked_by_me, likes_count: current.likes_count + (current.liked_by_me ? -1 : 1) }
-    setMemories((prev) => prev.map((m) => (m.id === memoryId ? optimistic : m)))
+    setMemories((prev) => sortMemories(prev.map((m) => (m.id === memoryId ? optimistic : m))))
 
     try {
       const response = await fetch(`/api/memories/${memoryId}/like`, { method: "POST" })
@@ -283,13 +294,15 @@ export default function MemoriesPage() {
       }
       const data = (await response.json()) as { liked: boolean; likes_count: number }
       setMemories((prev) =>
-        prev.map((m) =>
-          m.id === memoryId ? { ...m, liked_by_me: data.liked, likes_count: data.likes_count ?? m.likes_count } : m,
+        sortMemories(
+          prev.map((m) =>
+            m.id === memoryId ? { ...m, liked_by_me: data.liked, likes_count: data.likes_count ?? m.likes_count } : m,
+          ),
         ),
       )
     } catch (error) {
       console.error("Like toggle error:", error)
-      setMemories((prev) => prev.map((m) => (m.id === memoryId ? current : m)))
+      setMemories((prev) => sortMemories(prev.map((m) => (m.id === memoryId ? current : m))))
       setMemoryMessage({ type: "error", text: "Beğeni güncellenemedi." })
     }
   }
@@ -366,7 +379,7 @@ export default function MemoriesPage() {
           </div>
         ) : (
           <div
-            className="mt-16 h-[calc(100dvh-4rem)] overflow-y-auto snap-y snap-mandatory no-scrollbar"
+            className="mt-16 h-[calc(100dvh-4rem)] w-full max-w-5xl mx-auto overflow-y-auto snap-y snap-mandatory no-scrollbar px-0 sm:px-4 md:px-44"
             style={scrollContainerStyle}
             ref={listRef}
           >

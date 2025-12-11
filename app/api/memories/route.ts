@@ -16,18 +16,34 @@ export async function GET(request: Request) {
 
     const admin = createSupabaseAdminClient()
     const { searchParams } = new URL(request.url)
-    const cursor = searchParams.get("cursor")
+    const cursorParam = searchParams.get("cursor")
+    let cursor: { likesCount: number; createdAt: string } | null = null
+
+    if (cursorParam) {
+      try {
+        const parsed = JSON.parse(cursorParam) as { likesCount?: unknown; createdAt?: unknown }
+        if (typeof parsed?.likesCount === "number" && typeof parsed?.createdAt === "string") {
+          cursor = { likesCount: parsed.likesCount, createdAt: parsed.createdAt }
+        }
+      } catch (error) {
+        console.warn("Invalid cursor param, falling back to start:", error)
+      }
+    }
     const limitParam = Number.parseInt(searchParams.get("limit") ?? "12", 10)
     const pageSize = Number.isNaN(limitParam) ? 12 : Math.min(Math.max(limitParam, 1), 50)
 
     let query = admin
       .from("memories")
       .select("id, user_id, image_url, caption, created_at, likes_count")
+      .order("likes_count", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false })
       .limit(pageSize + 1)
 
     if (cursor) {
-      query = query.lt("created_at", cursor)
+      const { likesCount, createdAt } = cursor
+      query = query.or(
+        `likes_count.lt.${likesCount},and(likes_count.eq.${likesCount},created_at.lt.${createdAt})`,
+      )
     }
 
     const { data: memories, error: memoriesError } = await query
@@ -39,7 +55,14 @@ export async function GET(request: Request) {
 
     const hasMore = (memories?.length || 0) > pageSize
     const pageItems = hasMore ? (memories || []).slice(0, pageSize) : memories || []
-    const nextCursor = hasMore ? pageItems[pageItems.length - 1]?.created_at || null : null
+    const lastItem = pageItems[pageItems.length - 1]
+    const nextCursor =
+      hasMore && lastItem
+        ? {
+            likesCount: lastItem.likes_count || 0,
+            createdAt: lastItem.created_at,
+          }
+        : null
 
     const userIds = Array.from(new Set(pageItems.map((m) => m.user_id)))
     const profileMap = new Map<string, string>()
