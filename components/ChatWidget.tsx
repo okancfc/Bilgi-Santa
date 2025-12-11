@@ -244,7 +244,7 @@ export function ChatWidget() {
         <button
           type="button"
           onClick={() => setOpen((prev) => !prev)}
-          className="relative flex items-center gap-2 px-4 py-3 rounded-xl bg-bilgi-red text-white shadow-lg shadow-bilgi-red/40 hover:shadow-bilgi-red/50 hover:scale-[1.01] transition-all focus:outline-none focus:ring-2 focus:ring-gold-accent focus:ring-offset-2 focus:ring-offset-background"
+          className="relative flex items-center gap-2 px-4 py-2 rounded-xl bg-bilgi-red text-white shadow-lg shadow-bilgi-red/40 hover:shadow-bilgi-red/50 hover:scale-[1.01] transition-all focus:outline-none focus:ring-2 focus:ring-gold-accent focus:ring-offset-2 focus:ring-offset-background"
           aria-label="Eşinle sohbet et"
         >
           <svg
@@ -265,7 +265,7 @@ export function ChatWidget() {
       </div>
 
       {open && (
-        <div className="fixed bottom-24 right-6 z-40 w-[92vw] max-w-md bg-dark-card border border-border rounded-2xl shadow-2xl card-glow flex flex-col h-[520px] max-h-[80vh] overflow-hidden">
+        <div className="fixed bottom-18 right-6 z-40 w-[92vw] max-w-md bg-dark-card border border-border rounded-2xl shadow-2xl card-glow flex flex-col h-[520px] max-h-[70vh] md:max-h-[80vh] overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <div>
               <p className="text-xs text-muted-foreground">Anonim sohbet</p>
@@ -346,12 +346,28 @@ export function ChatWidget() {
                 className="bg-bilgi-red text-white px-3 py-2 rounded-xl text-sm font-semibold shadow-md shadow-bilgi-red/30 disabled:opacity-60 disabled:cursor-not-allowed hover:shadow-bilgi-red/50 min-h-[44px]"
               >
                 {sending ? (
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center justify-center">
                     <span className="inline-flex w-4 h-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin" />
-                    Gönderiliyor
+                    <span className="sr-only">Gönderiliyor</span>
                   </span>
                 ) : (
-                  "Gönder"
+                  <span className="flex items-center justify-center gap-1.5">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="w-5 h-5"
+                      aria-hidden="true"
+                    >
+                      <path d="M22 2 11 13" />
+                      <path d="M22 2 15 22 11 13 2 9 22 2Z" />
+                    </svg>
+                    <span className="sr-only">Gönder</span>
+                  </span>
                 )}
               </button>
             </div>
