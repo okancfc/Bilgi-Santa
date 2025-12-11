@@ -3,13 +3,6 @@ import { createSupabaseAdminClient, createSupabaseServerClient } from "@/lib/sup
 
 const getFirstName = (name?: string | null) => (name ? name.trim().split(/\s+/)[0] : "Anonim Santa")
 
-const parseMeetingDateTime = (meeting_date?: string | null, meeting_start?: string | null): Date | null => {
-  if (!meeting_date || !meeting_start) return null
-  const start = meeting_start.length === 5 ? `${meeting_start}:00` : meeting_start
-  const date = new Date(`${meeting_date}T${start}`)
-  return Number.isNaN(date.getTime()) ? null : date
-}
-
 export async function GET(request: Request) {
   try {
     const supabase = await createSupabaseServerClient()
@@ -122,17 +115,8 @@ export async function POST(request: Request) {
 
     const match = matches[0]
     const otherUserId = match.user_a === user.id ? match.user_b : match.user_a
-    const meetingDateTime = parseMeetingDateTime(match.meeting_date, match.meeting_start)
 
-    if (!meetingDateTime) {
-      return NextResponse.json({ error: "Buluşma bilgisi eksik" }, { status: 400 })
-    }
-
-    if (Date.now() < meetingDateTime.getTime()) {
-      return NextResponse.json({ error: "Fotoğraf yükleme buluşma sonrasında açılır" }, { status: 403 })
-    }
-
-    // Ensure pair has only one memory
+    // Only one memory per pair
     const { data: existingMemory, error: existingError } = await admin
       .from("memories")
       .select("id")
@@ -147,7 +131,6 @@ export async function POST(request: Request) {
     if (existingMemory && existingMemory.length > 0) {
       return NextResponse.json({ error: "Eşleşmeniz için zaten bir fotoğraf var" }, { status: 409 })
     }
-
     const body = await request.json().catch(() => null)
     const imageUrl = body?.imageUrl as string | undefined
     const caption = body?.caption as string | undefined

@@ -34,12 +34,22 @@ export function ChatWidget() {
   const [matchCheckDone, setMatchCheckDone] = useState(false)
   const [hasUnread, setHasUnread] = useState(false)
   const [lastSeenMessageId, setLastSeenMessageId] = useState<string | null>(null)
+  const listRef = useRef<HTMLDivElement | null>(null)
 
   const isDisabled = useMemo(() => !matchId || loading, [loading, matchId])
 
-  const scrollToBottom = useCallback(() => {
-    requestAnimationFrame(() => endRef.current?.scrollIntoView({ behavior: "smooth" }))
-  }, [])
+  const scrollToBottom = useCallback(
+    (behavior: ScrollBehavior = "smooth") => {
+      requestAnimationFrame(() => {
+        if (listRef.current) {
+          listRef.current.scrollTo({ top: listRef.current.scrollHeight, behavior })
+          return
+        }
+        endRef.current?.scrollIntoView({ behavior })
+      })
+    },
+    [],
+  )
 
   const fetchMessages = useCallback(async (isInitial = false) => {
     try {
@@ -102,6 +112,7 @@ export function ChatWidget() {
 
   useEffect(() => {
     if (open) {
+      scrollToBottom("auto")
       fetchMessages(true)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -109,7 +120,7 @@ export function ChatWidget() {
 
   useEffect(() => {
     scrollToBottom()
-  }, [messages])
+  }, [messages, scrollToBottom])
 
   useEffect(() => {
     if (open) {
@@ -202,7 +213,7 @@ export function ChatWidget() {
           >
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
-          <span className="text-sm font-semibold">Eşinle Chatleş</span>
+          <span className="text-sm font-semibold">Sohbet</span>
           {hasUnread && <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-gold-accent border-2 border-bilgi-red shadow" aria-label="Yeni mesaj" />}
         </button>
       </div>
@@ -226,7 +237,7 @@ export function ChatWidget() {
             </button>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3 bg-dark-bg/60">
+          <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3 bg-dark-bg/60">
             <div className="sticky top-0 z-10 -mx-4 px-4 pb-2 bg-gradient-to-b from-dark-card to-transparent text-center text-[12px] text-muted-foreground">
               <span className="inline-block rounded-full bg-muted/40 px-3 py-2">
                 Lütfen nazik olun. Hakaret, küfür veya aşağılayıcı mesajlar göndermeyin.
