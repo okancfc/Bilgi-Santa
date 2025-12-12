@@ -16,58 +16,63 @@ import { StarsBackground } from "@/components/StarsBackground"
 
 const LIABILITY_SECTIONS = [
   {
-    title: "Platformun Rolü ve Kapsamı",
+    title: "1. Platformun Rolü ve Kapsamı",
     points: [
-      "Bilgi Santa, katılımcılar arasında hediyeleşme ve buluşma planlamasını kolaylaştıran, resmi kurumları temsil etmeyen gönüllü bir platformdur.",
-      "Platform yalnızca eşleşme ve iletişim için teknik altyapı sağlar; etkinlik, buluşma, hediye temini, kargo, ödeme veya lojistik süreçlerinin hiçbirinden sorumlu değildir.",
+      "Bilgi Santa, kullanıcıların rastgele eşleşerek hediyeleşmesini ve iletişim kurmasını sağlayan gönüllü bir topluluk platformudur.",
+      "Platform; etkinlik düzenleme, buluşma planlama, hediye temini, kargo, ödeme veya lojistik süreçlerinin hiçbirinden sorumlu değildir.",
+      "Platform yalnızca teknik eşleşme ve temel iletişim altyapısı sağlar; kullanıcılar arasındaki ilişkilere müdahil değildir.",
     ],
   },
   {
-    title: "Katılımcı Beyanları ve Yükümlülükleri",
+    title: "2. Kullanıcı Beyanları ve Yükümlülükleri",
     points: [
-      "Hesabı kendi adınıza ve doğru bilgilerle açtığınızı; gerçek kimliğinizi beyan ettiğinizi kabul edersiniz.",
-      "Paylaştığınız her türlü içerikten (fotoğraf, mesaj, konum, hediye önerisi vb.) hukuken yalnızca siz sorumlusunuz; telif, kişilik hakkı ve KVKK ihlalleri dahil tüm riskleri üstlenirsiniz.",
-      "Yasa dışı, saldırgan, tehdit edici, rahatsız edici veya alkol/tütün/uyuşturucu kullanımını teşvik eden içerik paylaşmayacağınızı kabul edersiniz; tespit halinde hesabınız uyarı olmaksızın kısıtlanabilir ve gerekli mercilere bildirim yapılabilir.",
+      "Hesabı kendi adınıza ve doğru bilgilerle oluşturduğunuzu kabul edersiniz.",
+      "Üniversite e-posta adresinizi doğru şekilde beyan ettiğinizi kabul edersiniz.",
+      "Paylaştığınız tüm içeriklerden (fotoğraf, mesaj, hediye önerisi vb.) hukuki olarak yalnızca siz sorumlusunuz.",
+      "Telif, kişilik hakkı, KVKK ve diğer yasal ihlallerden doğabilecek tüm riski üstlenirsiniz.",
     ],
   },
   {
-    title: "Buluşma ve Hediyeleşme Riskleri",
+    title: "2.1 Yasaklı içerik ve davranışlar",
     points: [
-      "Buluşma yeri ve zamanı seçimi, güvenlik, ulaşım, kargo ve teslimat süreçleri tamamen sizin sorumluluğunuzdadır; olası kayıp, çalıntı, gecikme, kaza, yaralanma veya benzeri tüm sonuçlardan yalnızca siz sorumlusunuz.",
-      "Platform hiçbir şekilde tahsilat/ödeme aracı değildir; hediyeleşme ve alışveriş işlemlerinden doğan bedel, masraf ve vergiler size aittir.",
-      "Üçüncü kişilerle yaşanabilecek anlaşmazlık, iptal, gecikme veya memnuniyetsizliklerde platform arabulucu veya garantör değildir.",
+      "Yasa dışı, hakaret içeren, saldırgan, cinsel, tehditkâr veya rahatsız edici içerikler paylaşmazsınız.",
+      "Alkol, tütün, uyuşturucu kullanımını teşvik eden paylaşımlar yapmazsınız.",
+      "Spam, reklam veya ticari amaçlı mesajlar göndermezsiniz.",
+      "İhlal halinde hesabınız uyarı yapılmaksızın kısıtlanabilir veya kapatılabilir.",
     ],
   },
   {
-    title: "Fotoğraf ve İçerik Paylaşımı",
+    title: "3. Buluşma ve Hediyeleşme Süreçlerine İlişkin Sorumluluk Reddi",
     points: [
-      "Paylaştığınız fotoğraf, video, yorum ve her türlü içerik için gerekli tüm izinleri aldığınızı ve üçüncü kişilerin haklarını ihlal etmediğinizi beyan edersiniz.",
-      "Şikayet veya ihlal şüphesinde içerik kaldırılabilir, hesap kısıtlanabilir ve yetkili mercilere bilgi verilebilir; bu süreçlerden doğacak sonuçlar size aittir.",
-      "Barındırma, iletim veya depolama sırasında meydana gelebilecek erişim kesintisi, veri kaybı veya hasarlardan platform sorumlu tutulamaz.",
+      "Buluşma yeri ve zamanının seçimi, güvenlik, ulaşım, teslimat ve kargo süreçleri tamamen sizin sorumluluğunuzdadır.",
+      "Olası kayıp, çalıntı, gecikme, kaza, yaralanma veya memnuniyetsizliklerden platform sorumlu tutulamaz.",
+      "Platform ödeme/tahsilat aracı değildir; hediyeleşme ve alışveriş süreçlerinde oluşabilecek masraf, vergi veya anlaşmazlıklar kullanıcılara aittir.",
+      "Platform kullanıcılar arasındaki uyuşmazlıklarda arabulucu veya garantör değildir.",
     ],
   },
   {
-    title: "Kişisel Veriler ve İletişim",
+    title: "4. Fotoğraf, Mesaj ve Diğer İçeriklere Yönelik Sorumluluk",
     points: [
-      "Kayıt sırasında sağladığınız ad, e-posta ve isteğe bağlı diğer bilgiler eşleşme, bilgilendirme ve güvenlik amaçlarıyla işlenir; iletişim için sizinle e-posta veya uygulama içi bildirim yoluyla irtibat kurulabilir.",
-      "E-posta adresinizin gelecekteki etkinlik ve projelerle ilgili bilgilendirme/içerik gönderimleri için kullanılmasına açık rıza verirsiniz; dilediğinizde iletişim tercihinizi bize yazarak kaldırabilirsiniz.",
-      "Kişisel verilerin korunmasına yönelik makul teknik/idari tedbirler alınsa da yetkisiz erişim, saldırı veya veri sızıntısı risklerini bildiğinizi ve bu ihtimallerde platformu sorumlu tutmayacağınızı kabul edersiniz.",
+      "Paylaştığınız tüm içerikler için gerekli izinlere sahip olduğunuzu ve üçüncü kişilerin haklarını ihlal etmediğinizi beyan edersiniz.",
+      "Şikayet veya ihlal şüphesinde içerikler kaldırılabilir, hesap kısıtlanabilir ve gerekli hallerde ilgili mercilere bildirim yapılabilir.",
+      "Veri depolama, barındırma veya iletim sırasında yaşanabilecek kesinti, kayıp veya hasarlardan platform sorumlu değildir.",
     ],
   },
   {
-    title: "Sorumluluk Reddi ve Feragat",
+    title: "5. Kişisel Verilerin İşlenmesi ve İletişim (KVKK)",
     points: [
-      "Platform ve geliştiricileri; doğrudan/dolaylı zarar, kar kaybı, itibar kaybı, veri kaybı, kişisel yaralanma veya üçüncü kişilerin talepleri dahil hiçbir sonuçtan sorumlu değildir.",
-      "Hizmetin kesilmesi, bakım, güncelleme, hata veya güvenlik gerekçesiyle erişimin sınırlandırılması durumunda hesap veya içerik kaybı yaşayabileceğinizi; platformun bu durumlarda tazmin yükümlülüğü olmadığını kabul edersiniz.",
-      "Hesabınız, topluluk kurallarına aykırı davranmanız halinde önceden bildirim yapılmaksızın askıya alınabilir veya sonlandırılabilir.",
+      "İşlenen Veriler: Ad-soyad, üniversite e-posta adresi, mesaj içerikleri, profil bilgileri, eşleşme tercihleri, teknik kayıtlar (IP, log bilgileri).",
+      "İşleme Amaçları: Eşleşme sürecinin yürütülmesi; kullanıcı doğrulaması; bilgilendirme, duyuru ve güvenlik süreçleri; platformun geliştirilmesi ve güvenliğinin sağlanması.",
+      "Aktarım ve Saklama: Veriler Supabase altyapısında saklanır; makul teknik ve idari tedbirler alınsa da %100 güvenlik garanti edilemez, veri sızıntısı, saldırı veya yetkisiz erişim durumlarında platform sorumlu tutulamaz.",
+      "Açık Rıza: E-posta adresiniz, etkinlik duyuruları ve bilgilendirme içerikleri için kullanılabilir.",
     ],
   },
   {
-    title: "Hukuki Çerçeve ve Onay",
+    title: "6. Sorumluluk Reddi ve Feragat",
     points: [
-      "Bu koşullar gerektiğinde güncellenebilir; güncel metni takip etmek sizin sorumluluğunuzdadır.",
-      "Türk hukuku geçerlidir; İstanbul (Merkez) mahkemeleri ve icra daireleri yetkilidir.",
-      "Bu metni onaylayarak tüm riskleri ve sorumlulukları üstlendiğinizi, platformu ve geliştiricilerini her türlü talep ve sorumluluktan feragat ettiğinizi kabul edersiniz.",
+      "Platform ve geliştiricileri; doğrudan veya dolaylı zararlar, veri kaybı, kar kaybı, kişisel yaralanma, üçüncü kişi talepleri ve benzeri sonuçlardan hiçbir şekilde sorumlu değildir.",
+      "Hizmet kesintisi, bakım, güncelleme veya teknik sorunlar nedeniyle erişimin sınırlanması durumunda oluşabilecek kayıplar için tazmin yükümlülüğü yoktur.",
+      "Topluluk kuralları ihlal edildiğinde hesap önceden haber verilmeksizin askıya alınabilir veya sonlandırılabilir.",
     ],
   },
 ]
@@ -318,7 +323,9 @@ export default function SignupPage() {
                 <Collapsible>
                   <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border border-border bg-dark-bg/70 px-4 py-3 text-left transition-colors hover:bg-dark-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-bilgi-red/60">
                     <div>
-                      <p className="text-sm font-semibold text-foreground">Sorumluluk Reddi ve Açık Rıza Metni</p>
+                      <p className="text-sm font-semibold text-foreground">
+                        Kullanım Koşulları, Sorumluluk Reddi ve Açık Rıza Metni
+                      </p>
                       <p className="text-xs text-muted-foreground">
                         Lütfen aşağıdaki koşulları dikkatlice okuyup onaylayın. Onay olmadan hesap açılmaz.
                       </p>
@@ -344,11 +351,11 @@ export default function SignupPage() {
                       <div className="space-y-4 text-sm">
                         <div className="space-y-1">
                           <p className="text-foreground font-semibold">
-                            Bilgi Santa Kullanım Koşulları ve Sorumluluk Reddi
+                            Bilgi Santa – Kullanım Koşulları, Sorumluluk Reddi ve Açık Rıza Metni
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Bu platformu kullanarak tüm riskleri ve sonuçları üstlendiğinizi, hesap oluşturma ve
-                            katılımlara ilişkin her türlü sorumluluğun size ait olduğunu kabul edersiniz.
+                            Bu platformu kullanarak tüm riskleri ve sonuçları üstlendiğinizi; hesap oluşturma, bilgi
+                            paylaşımı ve katılımlara ilişkin tüm sorumluluğun size ait olduğunu kabul ve beyan edersiniz.
                           </p>
                         </div>
 
@@ -364,12 +371,12 @@ export default function SignupPage() {
                         ))}
 
                         <div className="space-y-1">
-                          <p className="text-sm font-semibold text-foreground">Onay Beyanı</p>
+                          <p className="text-sm font-semibold text-foreground">7. Onay Beyanı</p>
                           <p className="text-xs text-muted-foreground">
-                            Hesap oluşturma adımına devam ederek yukarıdaki tüm maddeleri okuduğunuzu, anladığınızı ve
-                            eksiksiz şekilde kabul ettiğinizi; platformu ve geliştiricilerini her türlü iddia, talep ve
-                            sorumluluktan feragat ettiğinizi ve iletişim e-postalarının (gelecek etkinlik/proje
-                            duyuruları dahil) gönderilmesine açık rıza verdiğinizi beyan edersiniz.
+                            Hesap oluşturma adımına devam ederek; yukarıdaki tüm maddeleri okuduğunuzu, anladığınızı ve
+                            eksiksiz olarak kabul ettiğinizi; platformu ve geliştiricilerini her türlü iddia ve
+                            talepten feragat ettiğinizi; kişisel verilerinizin belirtilen amaçlar doğrultusunda
+                            işlenmesine ve e-posta iletişimine açık rıza verdiğinizi beyan etmiş olursunuz.
                           </p>
                         </div>
                       </div>
@@ -389,9 +396,9 @@ export default function SignupPage() {
                     className="block text-[11px] sm:text-xs text-foreground leading-snug sm:leading-relaxed break-words text-left flex-1 min-w-0"
                   >
                     Yukarıdaki{" "}
-                    <span className="font-semibold">Sorumluluk Reddi ve Açık Rıza</span> metnini okudum, anladım ve{" "}
-                    <span className="font-semibold">onaylıyorum</span>. Bu kutucuğu işaretlemeden hesap açamayacağımı
-                    kabul ediyorum.
+                    <span className="font-semibold">Kullanım Koşulları, Sorumluluk Reddi ve Açık Rıza</span> metnini
+                    okudum, anladım ve <span className="font-semibold">onaylıyorum</span>. Bu kutucuğu işaretlemeden
+                    hesap açamayacağımı kabul ediyorum.
                   </Label>
                 </div>
               </div>
