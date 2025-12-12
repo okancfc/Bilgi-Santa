@@ -26,20 +26,12 @@ export default function LoginPage() {
 
   // Check for error from URL params (e.g., failed email confirmation)
   useEffect(() => {
-    const error = searchParams.get("error")
     const verified = searchParams.get("verified")
 
     if (verified === "true") {
       setStatus("idle")
       setErrorMessage("")
       setSuccessMessage("E-posta adresin doğrulandı. Lütfen giriş yap.")
-      return
-    }
-
-    if (error === "confirmation_failed") {
-      setStatus("error")
-      setErrorMessage("E-posta doğrulama başarısız oldu. Lütfen tekrar deneyin veya yeni bir doğrulama e-postası isteyin.")
-      setSuccessMessage("")
     }
   }, [searchParams])
 
