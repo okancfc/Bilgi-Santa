@@ -7,31 +7,48 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const token_hash = searchParams.get("token_hash")
   const type = searchParams.get("type")
+  const code = searchParams.get("code")
   const next = searchParams.get("next") ?? "/profile"
 
-  console.log("📋 Callback parametreleri:", { token_hash: !!token_hash, type, next })
+  console.log("📋 Callback parametreleri:", { token_hash: !!token_hash, code: !!code, type, next })
 
-  if (token_hash && type) {
-    console.log("✅ Token hash ve type var, doğrulama yapılıyor...")
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
-            } catch (e) {
-              console.error("⚠️ Cookie set hatası:", e)
-            }
-          },
+  const cookieStore = cookies()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
+          } catch (e) {
+            console.error("⚠️ Cookie set hatası:", e)
+          }
         },
       },
-    )
+    },
+  )
+
+  // New-style Supabase links send a `code` that must be exchanged for a session
+  if (code) {
+    console.log("✅ Code parametresi bulundu, session exchange başlatılıyor...")
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    console.log("📥 exchangeCodeForSession yanıtı:", { error: error?.message })
+
+    if (!error) {
+      console.log("✅ Code exchange başarılı, yönlendiriliyor:", next)
+      return NextResponse.redirect(new URL(next, request.url))
+    } else {
+      console.error("❌ Code exchange hatası:", error)
+    }
+  }
+
+  // Fallback for older email links using token_hash/type
+  if (token_hash && type) {
+    console.log("✅ Token hash ve type var, doğrulama yapılıyor...")
 
     console.log("📤 verifyOtp çağrılıyor...")
     const { error } = await supabase.auth.verifyOtp({
