@@ -22,13 +22,24 @@ export default function LoginPage() {
   })
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle")
   const [errorMessage, setErrorMessage] = useState("")
+  const [successMessage, setSuccessMessage] = useState("")
 
   // Check for error from URL params (e.g., failed email confirmation)
   useEffect(() => {
     const error = searchParams.get("error")
+    const verified = searchParams.get("verified")
+
+    if (verified === "true") {
+      setStatus("idle")
+      setErrorMessage("")
+      setSuccessMessage("E-posta adresin doğrulandı. Lütfen giriş yap.")
+      return
+    }
+
     if (error === "confirmation_failed") {
       setStatus("error")
       setErrorMessage("E-posta doğrulama başarısız oldu. Lütfen tekrar deneyin veya yeni bir doğrulama e-postası isteyin.")
+      setSuccessMessage("")
     }
   }, [searchParams])
 
@@ -38,6 +49,7 @@ export default function LoginPage() {
     console.log("Email:", formData.email)
     setStatus("loading")
     setErrorMessage("")
+    setSuccessMessage("")
 
     try {
       console.log("📤 Server-side login API çağrılıyor...")
@@ -147,6 +159,12 @@ export default function LoginPage() {
                 placeholder="Şifreniz"
               />
             </div>
+
+            {successMessage && (
+              <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3">
+                <p className="text-green-500 text-sm">{successMessage}</p>
+              </div>
+            )}
 
             {status === "error" && (
               <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">

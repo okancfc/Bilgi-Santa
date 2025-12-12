@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
   console.log("📋 Callback parametreleri:", { token_hash: !!token_hash, code: !!code, type, next })
 
   const cookieStore = cookies()
+  const loginUrl = new URL("/login", request.url)
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -39,8 +40,15 @@ export async function GET(request: NextRequest) {
     console.log("📥 exchangeCodeForSession yanıtı:", { error: error?.message })
 
     if (!error) {
-      console.log("✅ Code exchange başarılı, yönlendiriliyor:", next)
-      return NextResponse.redirect(new URL(next, request.url))
+      console.log("✅ Code exchange başarılı, login sayfasına yönlendiriliyor...")
+      // Session oluşsa bile kullanıcıya tekrar giriş yaptırmak için logout ediyoruz
+      const { error: signOutError } = await supabase.auth.signOut()
+      if (signOutError) {
+        console.error("⚠️ signOut sırasında hata:", signOutError.message)
+      }
+
+      loginUrl.searchParams.set("verified", "true")
+      return NextResponse.redirect(loginUrl)
     } else {
       console.error("❌ Code exchange hatası:", error)
     }
@@ -59,8 +67,9 @@ export async function GET(request: NextRequest) {
     console.log("📥 verifyOtp yanıtı:", { error: error?.message })
 
     if (!error) {
-      console.log("✅ Email doğrulama başarılı, yönlendiriliyor:", next)
-      return NextResponse.redirect(new URL(next, request.url))
+      console.log("✅ Email doğrulama başarılı, login sayfasına yönlendiriliyor")
+      loginUrl.searchParams.set("verified", "true")
+      return NextResponse.redirect(loginUrl)
     } else {
       console.error("❌ Email doğrulama hatası:", error)
     }
@@ -70,5 +79,6 @@ export async function GET(request: NextRequest) {
 
   // Return the user to an error page with instructions
   console.log("🔄 Login'e hata ile yönlendiriliyor")
-  return NextResponse.redirect(new URL("/login?error=confirmation_failed", request.url))
+  loginUrl.searchParams.set("error", "confirmation_failed")
+  return NextResponse.redirect(loginUrl)
 }
