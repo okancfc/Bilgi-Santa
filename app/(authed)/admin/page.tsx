@@ -553,7 +553,7 @@ export default function AdminPage() {
               <div className="bg-dark-card border border-border rounded-2xl p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-heading text-lg font-semibold">Son Katılanlar</h3>
-                  <span className="text-xs text-muted-foreground">Son 8 kayıt</span>
+                  <span className="text-xs text-muted-foreground">Son 10 kayıt</span>
                 </div>
                 {stats?.recentProfiles?.length ? (
                   <div className="space-y-3">

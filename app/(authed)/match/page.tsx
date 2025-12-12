@@ -71,6 +71,9 @@ export default function MatchPage() {
     return timeStr.substring(0, 5)
   }
 
+  const formatDepartment = (dept?: string | null) => (dept?.trim() ? dept.trim() : "Belirtilmedi")
+  const formatClassYear = (classYear?: number | null) => (classYear ? `${classYear}. sınıf` : "Belirtilmedi")
+
   if (loading) {
     return (
       <main className="relative min-h-screen">
@@ -200,6 +203,14 @@ export default function MatchPage() {
                       <span className="text-muted-foreground">Belirtilmedi</span>
                     )}
                   </div>
+                  <div className="bg-dark-bg/50 rounded-xl p-4">
+                    <p className="text-sm text-muted-foreground mb-1">Eşinin Bölümü</p>
+                    <p className="font-medium text-foreground">{formatDepartment(matchData.otherProfile.department)}</p>
+                  </div>
+                  <div className="bg-dark-bg/50 rounded-xl p-4">
+                    <p className="text-sm text-muted-foreground mb-1">Eşinin Sınıfı</p>
+                    <p className="font-medium text-foreground">{formatClassYear(matchData.otherProfile.class_year)}</p>
+                  </div>
                 </div>
 
                 <div className="bg-gold-accent/10 border border-gold-accent/30 rounded-lg p-4">
@@ -243,6 +254,15 @@ export default function MatchPage() {
                   </svg>
                   Eşinin İlgi Alanları
                 </h2>
+
+                <div className="flex flex-wrap gap-2 mb-6">
+                  <span className="px-3 py-1 bg-dark-bg border border-border rounded-full text-sm text-foreground">
+                    Bölüm: {formatDepartment(matchData.otherProfile.department)}
+                  </span>
+                  <span className="px-3 py-1 bg-dark-bg border border-border rounded-full text-sm text-foreground">
+                    Sınıf: {formatClassYear(matchData.otherProfile.class_year)}
+                  </span>
+                </div>
 
                 {matchData.otherProfile.interests && matchData.otherProfile.interests.length > 0 ? (
                   <div className="flex flex-wrap gap-2 mb-6">

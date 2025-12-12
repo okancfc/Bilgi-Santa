@@ -107,7 +107,7 @@ export async function GET() {
 
     const recentProfiles = [...profiles]
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, 8)
+      .slice(0, 10)
       .map((p) => ({
         id: p.user_id,
         name: p.name,

@@ -18,8 +18,8 @@ const getAllowedDateWindow = () => {
   const targetYear = now > decemberEnd ? currentYear + 1 : currentYear
 
   return {
-    startDate: `${targetYear}-12-17`,
-    endDate: `${targetYear}-12-31`,
+    startDate: `${targetYear}-12-23`,
+    endDate: `${targetYear}-12-26`,
   }
 }
 
@@ -97,7 +97,7 @@ export default function AvailabilityPage() {
 
     const dateInRange = newSlot.slot_date >= startDate && newSlot.slot_date <= endDate
     if (!dateInRange) {
-      setMessage({ type: "error", text: "Tarih yalnızca 17-31 Aralık aralığında seçilebilir." })
+      setMessage({ type: "error", text: "Tarih yalnızca 23-26 Aralık aralığında seçilebilir." })
       return
     }
 
