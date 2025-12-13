@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { supabase, type AvailabilitySlot } from "@/lib/supabaseClient"
+import { supabase, type AvailabilitySlot, type Profile } from "@/lib/supabaseClient"
 import { CAMPUS_LOCATION_OPTIONS, HOURLY_TIME_OPTIONS, SANTRAL_CAMPUS } from "@/lib/constants"
 import { StarsBackground } from "@/components/StarsBackground"
 import { Button } from "@/components/ui/button"
@@ -41,11 +41,60 @@ const resolveLocationLabel = (campus: string | null | undefined, value: string |
   return match?.label || value
 }
 
+const parseGiftPreferences = (giftPreferences?: string | string[] | null) => {
+  if (Array.isArray(giftPreferences)) {
+    return giftPreferences.map((item) => item.trim()).filter(Boolean)
+  }
+
+  if (typeof giftPreferences === "string") {
+    return giftPreferences.split(",").map((item) => item.trim()).filter(Boolean)
+  }
+
+  return []
+}
+
+const getProfileStatus = (profile: Partial<Profile> | null) => {
+  const missingFields: string[] = []
+
+  if (!profile?.name || profile.name.trim() === "") {
+    missingFields.push("İsim")
+  }
+  if (!profile?.gender) {
+    missingFields.push("Cinsiyet")
+  }
+  if (!profile?.department || profile.department.trim() === "") {
+    missingFields.push("Bölüm")
+  }
+  if (!profile?.class_year) {
+    missingFields.push("Sınıf")
+  }
+  if (!profile?.interests || profile.interests.length === 0) {
+    missingFields.push("İlgi alanı (en az 1)")
+  }
+  const giftPrefs = parseGiftPreferences(profile?.gift_preferences)
+  if (giftPrefs.length === 0) {
+    missingFields.push("Hediye tercihi (en az 1)")
+  }
+
+  return {
+    isComplete: missingFields.length === 0 && Boolean(profile?.profile_completed),
+    missingFields,
+  }
+}
+
+const parseMissingField = (field: string) => field.replace(/\s*\(.*?\)/g, "").trim()
+
+const formatMissingForMessage = (fields: string[]) => fields.map((field) => parseMissingField(field)).join(", ")
+
 export default function AvailabilityPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [user, setUser] = useState<{ id: string } | null>(null)
+  const [profileStatus, setProfileStatus] = useState<{ isComplete: boolean; missingFields: string[] }>({
+    isComplete: false,
+    missingFields: [],
+  })
   const [slots, setSlots] = useState<AvailabilitySlot[]>([])
   const { startDate, endDate } = getAllowedDateWindow()
   const defaultStart = HOURLY_TIME_OPTIONS[0]?.value || "09:00"
@@ -71,6 +120,19 @@ export default function AvailabilityPage() {
 
         setUser({ id: authUser.id })
 
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("name, gender, department, class_year, interests, gift_preferences, about_me, profile_completed")
+          .eq("user_id", authUser.id)
+          .single()
+
+        if (profileError && profileError.code !== "PGRST116") {
+          console.error("Error loading profile for availability:", profileError)
+        }
+
+        const status = getProfileStatus((profileData as Partial<Profile>) || null)
+        setProfileStatus(status)
+
         // Load existing slots
         const { data: existingSlots } = await supabase
           .from("availability_slots")
@@ -94,6 +156,17 @@ export default function AvailabilityPage() {
   const handleAddSlot = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
+    if (!profileStatus.isComplete) {
+      const missingText =
+        profileStatus.missingFields.length > 0
+          ? `Eksik alanlar: ${formatMissingForMessage(profileStatus.missingFields)}`
+          : "Profilini kaydedip tamamlanmış hale getirmelisin."
+      setMessage({
+        type: "error",
+        text: `Profilini tamamlamadan müsaitlik ekleyemezsin. ${missingText}`,
+      })
+      return
+    }
 
     const dateInRange = newSlot.slot_date >= startDate && newSlot.slot_date <= endDate
     if (!dateInRange) {
@@ -200,6 +273,60 @@ export default function AvailabilityPage() {
             <p className="text-muted-foreground">Buluşmaya uygun olduğun zamanları ekle</p>
           </div>
 
+          {!profileStatus.isComplete && (
+            <div className="bg-gradient-to-r from-red-500/15 via-dark-card to-red-500/5 border border-red-500/30 rounded-2xl p-5 md:p-6 shadow-lg shadow-red-500/15 mb-8">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="flex gap-3">
+                  <div className="h-7 w-11 flex items-center justify-center rounded-xl text-red-200">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M12 9v4" />
+                      <path d="M12 17h.01" />
+                      <circle cx="12" cy="12" r="10" />
+                    </svg>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="font-semibold text-red-50 text-lg">Önce profilini tamamla</p>
+                    <p className="text-sm text-red-100/85 leading-relaxed">
+                      İsim, Cinsiyet, Bölüm, Sınıf, İlgi Alanı ve Hediye Tercihi alanlarını doldurup kaydetmelisin.
+                      Hakkında alanı isteğe bağlı.
+                    </p>
+                    {profileStatus.missingFields.length > 0 && (
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {profileStatus.missingFields.map((field) => (
+                          <span
+                            key={field}
+                            className="px-3 py-1 rounded-full border border-red-500/40 bg-red-500/10 text-red-50 text-xs font-medium"
+                          >
+                            {parseMissingField(field)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-xs text-red-100/70">Kaydedince form otomatik açılacak.</p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.push("/profile")}
+                  className="w-full md:w-auto border-red-500/40 text-red-50 hover:bg-red-500/10"
+                >
+                  Profilimi Tamamla
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Add new slot form */}
           <div className="bg-dark-card border border-border rounded-2xl p-6 card-glow mb-8">
             <h2 className="font-heading text-xl font-bold mb-6 flex items-center gap-2">
@@ -226,81 +353,83 @@ export default function AvailabilityPage() {
             </h2>
 
             <form onSubmit={handleAddSlot} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="slot_date">Tarih</Label>
-                  <Input
-                    id="slot_date"
-                    type="date"
-                    value={newSlot.slot_date}
-                    onChange={(e) => setNewSlot({ ...newSlot, slot_date: e.target.value })}
-                    required
-                    min={startDate}
-                    max={endDate}
-                    className="mt-1 bg-dark-bg border-border"
-                  />
+              <fieldset disabled={saving || !profileStatus.isComplete} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="slot_date">Tarih</Label>
+                    <Input
+                      id="slot_date"
+                      type="date"
+                      value={newSlot.slot_date}
+                      onChange={(e) => setNewSlot({ ...newSlot, slot_date: e.target.value })}
+                      required
+                      min={startDate}
+                      max={endDate}
+                      className="mt-1 bg-dark-bg border-border"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="start_time">Başlangıç</Label>
+                    <select
+                      id="start_time"
+                      value={newSlot.start_time}
+                      onChange={(e) =>
+                        setNewSlot({
+                          ...newSlot,
+                          start_time: e.target.value,
+                          end_time: getEndTimeFromStart(e.target.value),
+                        })
+                      }
+                      required
+                      className="mt-1 w-full px-3 py-2 bg-dark-bg border border-border rounded-md text-foreground"
+                    >
+                      {HOURLY_TIME_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="end_time">Bitiş</Label>
+                    <Input
+                      id="end_time"
+                      type="text"
+                      value={newSlot.end_time}
+                      disabled
+                      className="mt-1 bg-dark-bg border-border"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="start_time">Başlangıç</Label>
-                  <select
-                    id="start_time"
-                    value={newSlot.start_time}
-                    onChange={(e) =>
-                      setNewSlot({
-                        ...newSlot,
-                        start_time: e.target.value,
-                        end_time: getEndTimeFromStart(e.target.value),
-                      })
-                    }
-                    required
-                    className="mt-1 w-full px-3 py-2 bg-dark-bg border border-border rounded-md text-foreground"
-                  >
-                    {HOURLY_TIME_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <Label htmlFor="end_time">Bitiş</Label>
-                  <Input
-                    id="end_time"
-                    type="text"
-                    value={newSlot.end_time}
-                    disabled
-                    className="mt-1 bg-dark-bg border-border"
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="location">Kampüs İçindeki Konum</Label>
-                  <select
-                    id="location"
-                    value={newSlot.location}
-                    onChange={(e) => setNewSlot({ ...newSlot, location: e.target.value })}
-                    className="mt-1 w-full px-3 py-2 bg-dark-bg border border-border rounded-md text-foreground"
-                    required
-                  >
-                    <option value="">Seçin</option>
-                    {getLocationOptions(SANTRAL_CAMPUS.value).map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="location">Kampüs İçindeki Konum</Label>
+                    <select
+                      id="location"
+                      value={newSlot.location}
+                      onChange={(e) => setNewSlot({ ...newSlot, location: e.target.value })}
+                      className="mt-1 w-full px-3 py-2 bg-dark-bg border border-border rounded-md text-foreground"
+                      required
+                    >
+                      <option value="">Seçin</option>
+                      {getLocationOptions(SANTRAL_CAMPUS.value).map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-              </div>
 
-              <div className="rounded-lg border border-border bg-dark-bg/60 p-3 text-sm text-muted-foreground">
-                Bu etkinlik yalnızca <span className="text-foreground font-medium">{SANTRAL_CAMPUS.label}</span> kampüsünde
-                gerçekleşecek. Lütfen kampüs içindeki bir buluşma noktasını seçin.
-              </div>
+                <div className="rounded-lg border border-border bg-dark-bg/60 p-3 text-sm text-muted-foreground">
+                  Bu etkinlik yalnızca <span className="text-foreground font-medium">{SANTRAL_CAMPUS.label}</span> kampüsünde
+                  gerçekleşecek. Lütfen kampüs içindeki bir buluşma noktasını seçin.
+                </div>
+              </fieldset>
 
-              <Button type="submit" disabled={saving} className="btn-bilgi">
-                {saving ? "Ekleniyor..." : "Müsaitlik Ekle"}
+              <Button type="submit" disabled={saving || !profileStatus.isComplete} className="btn-bilgi">
+                {profileStatus.isComplete ? (saving ? "Ekleniyor..." : "Müsaitlik Ekle") : "Önce Profilini Tamamla"}
               </Button>
             </form>
           </div>

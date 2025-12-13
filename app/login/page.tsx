@@ -3,16 +3,16 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { supabase } from "@/lib/supabaseClient"
+import { formatBilgiEmail, BILGI_EMAIL_DOMAIN } from "@/lib/email"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { StarsBackground } from "@/components/StarsBackground"
 
 export default function LoginPage() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const redirectPath = searchParams.get("redirect") || "/profile"
 
@@ -23,6 +23,18 @@ export default function LoginPage() {
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle")
   const [errorMessage, setErrorMessage] = useState("")
   const [successMessage, setSuccessMessage] = useState("")
+
+  const handleEmailChange = (value: string) => {
+    const cleaned = value.trim().toLowerCase()
+
+    if (!cleaned) {
+      setFormData((prev) => ({ ...prev, email: "" }))
+      return
+    }
+
+    const normalized = cleaned.includes("@") ? formatBilgiEmail(cleaned) : cleaned
+    setFormData((prev) => ({ ...prev, email: normalized }))
+  }
 
   // Check for error from URL params (e.g., failed email confirmation)
   useEffect(() => {
@@ -38,7 +50,15 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     console.log("🔑 Login başladı")
-    console.log("Email:", formData.email)
+    const email = formatBilgiEmail(formData.email)
+    console.log("Email:", email)
+
+    if (!email) {
+      setStatus("error")
+      setErrorMessage(`Lütfen Bilgi e-posta adresinizi yazın. (@bilgiedu.net otomatik eklenecek)`)
+      return
+    }
+
     setStatus("loading")
     setErrorMessage("")
     setSuccessMessage("")
@@ -51,7 +71,7 @@ export default function LoginPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email: formData.email,
+          email,
           password: formData.password,
         }),
       })
@@ -93,6 +113,8 @@ export default function LoginPage() {
     console.log("🏁 Login fonksiyonu tamamlandı")
   }
 
+  const showDomainSuffix = !formData.email.includes("@")
+
   return (
     <main className="relative min-h-screen flex items-center justify-center px-4 py-12">
       <StarsBackground />
@@ -128,15 +150,27 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <Label htmlFor="email">E-posta</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                required
-                className="mt-1 bg-dark-bg border-border"
-                placeholder="ogrenci@bilgiedu.net"
-              />
+              <div className="relative">
+                <Input
+                  id="email"
+                  type="text"
+                  inputMode="email"
+                  autoComplete="username"
+                  value={formData.email}
+                  onChange={(e) => handleEmailChange(e.target.value)}
+                  required
+                  className={cn(
+                    "mt-1 bg-dark-bg border-border",
+                    showDomainSuffix ? "pr-32" : "pr-3"
+                  )}
+                  placeholder="ad.soyad"
+                />
+                {showDomainSuffix && (
+                  <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground">
+                    {BILGI_EMAIL_DOMAIN}
+                  </span>
+                )}
+              </div>
             </div>
 
             <div>

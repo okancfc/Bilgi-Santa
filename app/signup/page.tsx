@@ -3,8 +3,9 @@
 import type React from "react"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { BILGI_EMAIL_DOMAIN, formatBilgiEmail } from "@/lib/email"
+import { cn } from "@/lib/utils"
 import { supabase } from "@/lib/supabaseClient"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -78,7 +79,6 @@ const LIABILITY_SECTIONS = [
 ]
 
 export default function SignupPage() {
-  const router = useRouter()
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -89,8 +89,16 @@ export default function SignupPage() {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
   const [errorMessage, setErrorMessage] = useState("")
 
-  const validateEmail = (email: string): boolean => {
-    return email.toLowerCase().endsWith("@bilgiedu.net")
+  const handleEmailChange = (value: string) => {
+    const cleaned = value.trim().toLowerCase()
+
+    if (!cleaned) {
+      setFormData((prev) => ({ ...prev, email: "" }))
+      return
+    }
+
+    const normalized = cleaned.includes("@") ? formatBilgiEmail(cleaned) : cleaned
+    setFormData((prev) => ({ ...prev, email: normalized }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -105,11 +113,14 @@ export default function SignupPage() {
       return
     }
 
+    const email = formatBilgiEmail(formData.email)
+    console.log("Email:", email)
+
     // Validate email domain
-    if (!validateEmail(formData.email)) {
+    if (!email) {
       console.log("❌ Email validasyonu başarısız:", formData.email)
       setStatus("error")
-      setErrorMessage("Sadece @bilgiedu.net uzantılı e-posta adresleri kabul edilmektedir.")
+      setErrorMessage("Bilgi e-posta adresinizi yazın. Alan adı otomatik eklenecek.")
       return
     }
     console.log("✅ Email validasyonu başarılı")
@@ -137,7 +148,7 @@ export default function SignupPage() {
     try {
       console.log("📤 Supabase signUp çağrısı yapılıyor...")
       const { data, error } = await supabase.auth.signUp({
-        email: formData.email,
+        email,
         password: formData.password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
@@ -278,18 +289,27 @@ export default function SignupPage() {
 
               <div>
                 <Label htmlFor="email">E-posta</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  required
-                  className="mt-1 bg-dark-bg border-border"
-                  placeholder="ogrenci@bilgiedu.net"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Sadece @bilgiedu.net uzantılı adresler kabul edilir.
-                </p>
+                <div className="relative">
+                  <Input
+                    id="email"
+                    type="text"
+                    inputMode="email"
+                    autoComplete="email"
+                    value={formData.email}
+                    onChange={(e) => handleEmailChange(e.target.value)}
+                    required
+                    className={cn(
+                      "mt-1 bg-dark-bg border-border",
+                      !formData.email.includes("@") ? "pr-32" : "pr-3"
+                    )}
+                    placeholder="ad.soyad"
+                  />
+                  {!formData.email.includes("@") && (
+                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground">
+                      {BILGI_EMAIL_DOMAIN}
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div>

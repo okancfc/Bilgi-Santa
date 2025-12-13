@@ -367,23 +367,28 @@ export default function ProfilePage() {
 
             {/* Interests Card */}
             <div className="bg-dark-card border border-border rounded-2xl p-6 card-glow">
-              <h2 className="font-heading text-xl font-bold mb-2 flex items-center gap-2">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="text-bilgi-red"
-                >
-                  <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
-                </svg>
-                İlgi Alanları
-              </h2>
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <h2 className="font-heading text-xl font-bold flex items-center gap-2">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-bilgi-red"
+                  >
+                    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+                  </svg>
+                  İlgi Alanları
+                </h2>
+                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-bilgi-red/10 text-bilgi-red border border-bilgi-red/30 shadow-[0_0_0_1px_rgba(244,63,94,0.15)]">
+                  En az 1 seçim
+                </span>
+              </div>
               <p className="text-muted-foreground text-sm mb-6">
                 Seninle ortak ilgi alanlarına sahip biriyle eşleşmen için seçimlerini yap
               </p>
@@ -396,26 +401,31 @@ export default function ProfilePage() {
 
             {/* Gift Preferences Card */}
             <div className="bg-dark-card border border-border rounded-2xl p-6 card-glow">
-              <h2 className="font-heading text-xl font-bold mb-2 flex items-center gap-2">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="text-gold-accent"
-                >
-                  <rect x="3" y="8" width="18" height="4" rx="1" />
-                  <path d="M12 8v13" />
-                  <path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7" />
-                  <path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5" />
-                </svg>
-                Hediye Tercihleri
-              </h2>
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <h2 className="font-heading text-xl font-bold flex items-center gap-2">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-gold-accent"
+                  >
+                    <rect x="3" y="8" width="18" height="4" rx="1" />
+                    <path d="M12 8v13" />
+                    <path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7" />
+                    <path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5" />
+                  </svg>
+                  Hediye Tercihleri
+                </h2>
+                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-gold-accent/15 text-gold-accent border border-gold-accent/40 shadow-[0_0_0_1px_rgba(217,170,38,0.2)]">
+                  En az 1 seçim
+                </span>
+              </div>
               <p className="text-muted-foreground text-sm mb-6">Almaktan hoşlanacağın hediye türlerini seç</p>
 
               <GiftPreferenceSelector

@@ -1,6 +1,17 @@
 // Email sending helper (stub implementation)
 // In production, replace with actual email service like Resend
 
+export const BILGI_EMAIL_DOMAIN = "@bilgiedu.net"
+
+// Builds a Bilgi email by normalizing the local part and appending the domain.
+export const formatBilgiEmail = (value: string) => {
+  const localPart = value.trim().split("@")[0]?.toLowerCase() || ""
+
+  if (!localPart) return ""
+
+  return `${localPart}${BILGI_EMAIL_DOMAIN}`
+}
+
 interface EmailOptions {
   to: string
   subject: string
