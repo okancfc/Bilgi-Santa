@@ -385,7 +385,7 @@ export default function ProfilePage() {
                   </svg>
                   İlgi Alanları
                 </h2>
-                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-bilgi-red/10 text-bilgi-red border border-bilgi-red/30 shadow-[0_0_0_1px_rgba(244,63,94,0.15)]">
+                <span className="px-1.5 py-1 rounded-full text-xs font-semibold bg-bilgi-red/10 text-bilgi-red border border-bilgi-red/30 shadow-[0_0_0_1px_rgba(244,63,94,0.15)]">
                   En az 1 seçim
                 </span>
               </div>
@@ -422,7 +422,7 @@ export default function ProfilePage() {
                   </svg>
                   Hediye Tercihleri
                 </h2>
-                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-gold-accent/15 text-gold-accent border border-gold-accent/40 shadow-[0_0_0_1px_rgba(217,170,38,0.2)]">
+                <span className="px-1.5 py-1 rounded-full text-xs font-semibold bg-gold-accent/15 text-gold-accent border border-gold-accent/40 shadow-[0_0_0_1px_rgba(217,170,38,0.2)]">
                   En az 1 seçim
                 </span>
               </div>
