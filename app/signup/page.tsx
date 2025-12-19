@@ -7,6 +7,7 @@ import Link from "next/link"
 import { BILGI_EMAIL_DOMAIN, formatBilgiEmail } from "@/lib/email"
 import { cn } from "@/lib/utils"
 import { supabase } from "@/lib/supabaseClient"
+import { REGISTRATION_DEADLINE } from "@/lib/constants"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
@@ -88,6 +89,8 @@ export default function SignupPage() {
   const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false)
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
   const [errorMessage, setErrorMessage] = useState("")
+  const signupClosed = new Date() >= REGISTRATION_DEADLINE
+  const deadlineLabel = REGISTRATION_DEADLINE.toLocaleDateString("tr-TR", { year: "numeric", month: "long", day: "numeric" })
 
   const handleEmailChange = (value: string) => {
     const cleaned = value.trim().toLowerCase()
@@ -105,6 +108,12 @@ export default function SignupPage() {
     e.preventDefault()
     setErrorMessage("")
     console.log("🚀 Signup başladı")
+
+    if (signupClosed) {
+      setStatus("error")
+      setErrorMessage(`Kayıt dönemi ${deadlineLabel} itibarıyla kapandı.`)
+      return
+    }
 
     if (!hasAcceptedTerms) {
       console.log("❌ Sorumluluk metni onaylanmadı")
@@ -248,6 +257,12 @@ export default function SignupPage() {
             <p className="text-muted-foreground">Bilgi Santa'ya katılmak için kayıt ol</p>
           </div>
 
+          {signupClosed && (
+            <div className="mb-6 rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-4 text-sm text-yellow-200">
+              Kayıtlar {deadlineLabel} itibarıyla kapandı. Mevcut hesabınız varsa giriş yapabilirsiniz.
+            </div>
+          )}
+
           {status === "success" ? (
             <div className="text-center py-8">
               <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
@@ -274,154 +289,156 @@ export default function SignupPage() {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <Label htmlFor="name">İsim</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                  className="mt-1 bg-dark-bg border-border"
-                  placeholder="Adınız Soyadınız"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="email">E-posta</Label>
-                <div className="relative">
+              <fieldset disabled={signupClosed} className="space-y-5">
+                <div>
+                  <Label htmlFor="name">İsim</Label>
                   <Input
-                    id="email"
+                    id="name"
                     type="text"
-                    inputMode="email"
-                    autoComplete="email"
-                    value={formData.email}
-                    onChange={(e) => handleEmailChange(e.target.value)}
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
-                    className={cn(
-                      "mt-1 bg-dark-bg border-border",
-                      !formData.email.includes("@") ? "pr-32" : "pr-3"
+                    className="mt-1 bg-dark-bg border-border"
+                    placeholder="Adınız Soyadınız"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="email">E-posta</Label>
+                  <div className="relative">
+                    <Input
+                      id="email"
+                      type="text"
+                      inputMode="email"
+                      autoComplete="email"
+                      value={formData.email}
+                      onChange={(e) => handleEmailChange(e.target.value)}
+                      required
+                      className={cn(
+                        "mt-1 bg-dark-bg border-border",
+                        !formData.email.includes("@") ? "pr-32" : "pr-3"
+                      )}
+                      placeholder="ad.soyad"
+                    />
+                    {!formData.email.includes("@") && (
+                      <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground">
+                        {BILGI_EMAIL_DOMAIN}
+                      </span>
                     )}
-                    placeholder="ad.soyad"
-                  />
-                  {!formData.email.includes("@") && (
-                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground">
-                      {BILGI_EMAIL_DOMAIN}
-                    </span>
-                  )}
+                  </div>
                 </div>
-              </div>
 
-              <div>
-                <Label htmlFor="password">Şifre</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  required
-                  minLength={6}
-                  className="mt-1 bg-dark-bg border-border"
-                  placeholder="En az 6 karakter"
-                />
-              </div>
+                <div>
+                  <Label htmlFor="password">Şifre</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    required
+                    minLength={6}
+                    className="mt-1 bg-dark-bg border-border"
+                    placeholder="En az 6 karakter"
+                  />
+                </div>
 
-              <div>
-                <Label htmlFor="confirmPassword">Şifre Tekrar</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={formData.confirmPassword}
-                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                  required
-                  className="mt-1 bg-dark-bg border-border"
-                  placeholder="Şifrenizi tekrar girin"
-                />
-              </div>
+                <div>
+                  <Label htmlFor="confirmPassword">Şifre Tekrar</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    value={formData.confirmPassword}
+                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                    required
+                    className="mt-1 bg-dark-bg border-border"
+                    placeholder="Şifrenizi tekrar girin"
+                  />
+                </div>
 
-              <div className="space-y-3 rounded-xl border border-border bg-dark-bg/50 p-4">
-                <Collapsible>
-                  <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border border-border bg-dark-bg/70 px-4 py-3 text-left transition-colors hover:bg-dark-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-bilgi-red/60">
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">
-                        Kullanım Koşulları, Sorumluluk Reddi ve Açık Rıza Metni
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Lütfen aşağıdaki koşulları dikkatlice okuyup onaylayın. Onay olmadan hesap açılmaz.
-                      </p>
-                    </div>
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="transition-transform data-[state=open]:rotate-180"
-                    >
-                      <path d="M6 9l6 6 6-6" />
-                    </svg>
-                  </CollapsibleTrigger>
-
-                  <CollapsibleContent className="mt-3">
-                    <ScrollArea className="h-64 w-full rounded-lg border border-border bg-dark-bg/60 p-4">
-                      <div className="space-y-4 text-sm">
-                        <div className="space-y-1">
-                          <p className="text-foreground font-semibold">
-                            Bilgi Santa – Kullanım Koşulları, Sorumluluk Reddi ve Açık Rıza Metni
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Bu platformu kullanarak tüm riskleri ve sonuçları üstlendiğinizi; hesap oluşturma, bilgi
-                            paylaşımı ve katılımlara ilişkin tüm sorumluluğun size ait olduğunu kabul ve beyan edersiniz.
-                          </p>
-                        </div>
-
-                        {LIABILITY_SECTIONS.map((section) => (
-                          <div key={section.title} className="space-y-2">
-                            <p className="text-sm font-semibold text-foreground">{section.title}</p>
-                            <ul className="list-disc space-y-1 pl-5 text-xs text-muted-foreground">
-                              {section.points.map((point) => (
-                                <li key={point}>{point}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        ))}
-
-                        <div className="space-y-1">
-                          <p className="text-sm font-semibold text-foreground">7. Onay Beyanı</p>
-                          <p className="text-xs text-muted-foreground">
-                            Hesap oluşturma adımına devam ederek; yukarıdaki tüm maddeleri okuduğunuzu, anladığınızı ve
-                            eksiksiz olarak kabul ettiğinizi; platformu ve geliştiricilerini her türlü iddia ve
-                            talepten feragat ettiğinizi; kişisel verilerinizin belirtilen amaçlar doğrultusunda
-                            işlenmesine ve e-posta iletişimine açık rıza verdiğinizi beyan etmiş olursunuz.
-                          </p>
-                        </div>
+                <div className="space-y-3 rounded-xl border border-border bg-dark-bg/50 p-4">
+                  <Collapsible>
+                    <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border border-border bg-dark-bg/70 px-4 py-3 text-left transition-colors hover:bg-dark-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-bilgi-red/60">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">
+                          Kullanım Koşulları, Sorumluluk Reddi ve Açık Rıza Metni
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Lütfen aşağıdaki koşulları dikkatlice okuyup onaylayın. Onay olmadan hesap açılmaz.
+                        </p>
                       </div>
-                    </ScrollArea>
-                  </CollapsibleContent>
-                </Collapsible>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="transition-transform data-[state=open]:rotate-180"
+                      >
+                        <path d="M6 9l6 6 6-6" />
+                      </svg>
+                    </CollapsibleTrigger>
 
-                <div className="flex flex-row items-start gap-3 flex-wrap">
-                  <Checkbox
-                    id="terms"
-                    checked={hasAcceptedTerms}
-                    onCheckedChange={(checked) => setHasAcceptedTerms(checked === true)}
-                    className="mt-0.5 h-4 w-4 sm:h-5 sm:w-5 border-2 border-foreground/60 data-[state=checked]:bg-bilgi-red data-[state=checked]:border-bilgi-red"
-                  />
-                  <Label
-                    htmlFor="terms"
-                    className="block text-[11px] sm:text-xs text-foreground leading-snug sm:leading-relaxed break-words text-left flex-1 min-w-0"
-                  >
-                    Yukarıdaki{" "}
-                    <span className="font-semibold">Kullanım Koşulları, Sorumluluk Reddi ve Açık Rıza</span> metnini
-                    okudum, anladım ve <span className="font-semibold">onaylıyorum</span>. Bu kutucuğu işaretlemeden
-                    hesap açamayacağımı kabul ediyorum.
-                  </Label>
+                    <CollapsibleContent className="mt-3">
+                      <ScrollArea className="h-64 w-full rounded-lg border border-border bg-dark-bg/60 p-4">
+                        <div className="space-y-4 text-sm">
+                          <div className="space-y-1">
+                            <p className="text-foreground font-semibold">
+                              Bilgi Santa – Kullanım Koşulları, Sorumluluk Reddi ve Açık Rıza Metni
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Bu platformu kullanarak tüm riskleri ve sonuçları üstlendiğinizi; hesap oluşturma, bilgi
+                              paylaşımı ve katılımlara ilişkin tüm sorumluluğun size ait olduğunu kabul ve beyan edersiniz.
+                            </p>
+                          </div>
+
+                          {LIABILITY_SECTIONS.map((section) => (
+                            <div key={section.title} className="space-y-2">
+                              <p className="text-sm font-semibold text-foreground">{section.title}</p>
+                              <ul className="list-disc space-y-1 pl-5 text-xs text-muted-foreground">
+                                {section.points.map((point) => (
+                                  <li key={point}>{point}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          ))}
+
+                          <div className="space-y-1">
+                            <p className="text-sm font-semibold text-foreground">7. Onay Beyanı</p>
+                            <p className="text-xs text-muted-foreground">
+                              Hesap oluşturma adımına devam ederek; yukarıdaki tüm maddeleri okuduğunuzu, anladığınızı ve
+                              eksiksiz olarak kabul ettiğinizi; platformu ve geliştiricilerini her türlü iddia ve
+                              talepten feragat ettiğinizi; kişisel verilerinizin belirtilen amaçlar doğrultusunda
+                              işlenmesine ve e-posta iletişimine açık rıza verdiğinizi beyan etmiş olursunuz.
+                            </p>
+                          </div>
+                        </div>
+                      </ScrollArea>
+                    </CollapsibleContent>
+                  </Collapsible>
+
+                  <div className="flex flex-row items-start gap-3 flex-wrap">
+                    <Checkbox
+                      id="terms"
+                      checked={hasAcceptedTerms}
+                      onCheckedChange={(checked) => setHasAcceptedTerms(checked === true)}
+                      className="mt-0.5 h-4 w-4 sm:h-5 sm:w-5 border-2 border-foreground/60 data-[state=checked]:bg-bilgi-red data-[state=checked]:border-bilgi-red"
+                    />
+                    <Label
+                      htmlFor="terms"
+                      className="block text-[11px] sm:text-xs text-foreground leading-snug sm:leading-relaxed break-words text-left flex-1 min-w-0"
+                    >
+                      Yukarıdaki{" "}
+                      <span className="font-semibold">Kullanım Koşulları, Sorumluluk Reddi ve Açık Rıza</span> metnini
+                      okudum, anladım ve <span className="font-semibold">onaylıyorum</span>. Bu kutucuğu işaretlemeden
+                      hesap açamayacağımı kabul ediyorum.
+                    </Label>
+                  </div>
                 </div>
-              </div>
+              </fieldset>
 
               {status === "error" && (
                 <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
@@ -431,7 +448,7 @@ export default function SignupPage() {
 
               <Button
                 type="submit"
-                disabled={status === "loading" || !hasAcceptedTerms}
+                disabled={status === "loading" || !hasAcceptedTerms || signupClosed}
                 className="w-full btn-bilgi"
               >
                 {status === "loading" ? (

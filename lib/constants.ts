@@ -1,5 +1,33 @@
-// Target date for the event countdown
-export const TARGET_DATE = new Date("2025-02-14T00:00:00")
+const EVENT_YEAR = 2025
+
+const createDate = (month: number, day: number, hour = 0, minute = 0) => new Date(EVENT_YEAR, month - 1, day, hour, minute, 0)
+const formatDateInput = (date: Date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+const meetingStartDate = createDate(12, 23)
+const meetingEndDate = createDate(12, 26, 23, 59)
+
+export const MEETING_DATE_RANGE = {
+  start: meetingStartDate,
+  end: meetingEndDate,
+  startDateString: formatDateInput(meetingStartDate),
+  endDateString: formatDateInput(meetingEndDate),
+}
+
+export const MEETING_ALLOWED_DATES = Array.from({ length: 4 }, (_item, index) =>
+  formatDateInput(createDate(12, 23 + index)),
+)
+
+export const DEFAULT_MEETING_TIME_RANGE = { start: "13:00", end: "14:00" }
+
+export const REGISTRATION_DEADLINE = createDate(12, 22)
+
+// Target date for the event countdown and signup closure
+export const TARGET_DATE = REGISTRATION_DEADLINE
 
 // Interest categories and options
 export const INTEREST_CATEGORIES = {

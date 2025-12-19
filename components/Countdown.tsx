@@ -10,6 +10,12 @@ interface TimeLeft {
   seconds: number
 }
 
+const DEFAULT_COUNTDOWN_LABEL = TARGET_DATE.toLocaleDateString("tr-TR", {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+})
+
 function calculateTimeLeft(targetDate: Date, enabled: boolean): TimeLeft {
   if (!enabled) {
     return { days: 0, hours: 0, minutes: 0, seconds: 0 }
@@ -47,7 +53,7 @@ export function Countdown() {
   const [mounted, setMounted] = useState(false)
   const [targetDate, setTargetDate] = useState<Date>(TARGET_DATE)
   const [enabled, setEnabled] = useState<boolean>(true)
-  const [labelDate, setLabelDate] = useState<string>("14 Şubat 2025")
+  const [labelDate, setLabelDate] = useState<string>(DEFAULT_COUNTDOWN_LABEL)
   const [loadingSettings, setLoadingSettings] = useState(true)
 
   useEffect(() => {

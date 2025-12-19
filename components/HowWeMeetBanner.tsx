@@ -60,11 +60,11 @@ export function HowWeMeetBanner({ fullHeight = false }: HowWeMeetBannerProps) {
                   <div className="space-y-2.5 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Tarih:</span>
-                      <span className="text-foreground font-medium">14 Şubat 2025</span>
+                      <span className="text-foreground font-medium">24 Aralık 2025</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Saat:</span>
-                      <span className="text-foreground font-medium">14:00 - 15:00</span>
+                      <span className="text-foreground font-medium">13:00 - 14:00</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Yer:</span>

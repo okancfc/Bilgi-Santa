@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Profile, AvailabilitySlot, Match } from "./supabaseClient"
+import { DEFAULT_MEETING_TIME_RANGE, MEETING_ALLOWED_DATES, MEETING_DATE_RANGE } from "./constants"
 
 // Types for matching algorithm
 interface UserWithData {
@@ -16,6 +17,7 @@ interface CandidatePair {
   campusMatch: boolean
   locationMatch: boolean
   crossGender: boolean
+  availabilityTier: 0 | 1 | 2
   overlappingSlot: {
     date: string
     start: string
@@ -86,6 +88,124 @@ function minutesToTime(totalMinutes: number): string {
   const hours = Math.floor(normalized / 60)
   const minutes = normalized % 60
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`
+}
+
+const allowedDateSet = new Set(MEETING_ALLOWED_DATES)
+const defaultMeetingDate = MEETING_ALLOWED_DATES[0]
+
+function isAllowedMeetingDate(dateStr: string): boolean {
+  if (!dateStr) return false
+  if (allowedDateSet.has(dateStr)) return true
+  return dateStr >= MEETING_DATE_RANGE.startDateString && dateStr <= MEETING_DATE_RANGE.endDateString
+}
+
+function normalizeTimeString(timeStr: string): string {
+  const [hour = "00", minute = "00"] = timeStr.split(":")
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`
+}
+
+function pickPreferredMeetingDate(slotsA: AvailabilitySlot[], slotsB: AvailabilitySlot[]): string {
+  const preferredDates = [...slotsA, ...slotsB]
+    .map((slot) => slot.slot_date)
+    .filter((date) => isAllowedMeetingDate(date))
+    .sort()
+
+  if (preferredDates.length > 0) {
+    return preferredDates[0]
+  }
+
+  return defaultMeetingDate
+}
+
+function pickBestSingleUserSlot(slots: AvailabilitySlot[]): {
+  date: string
+  start: string
+  end: string
+  location: string | null
+  locationMatch: boolean
+  campusMatch: boolean
+  durationMinutes: number
+} | null {
+  if (!slots.length) return null
+
+  const sorted = slots.slice().sort((a, b) => {
+    const dateCompare = a.slot_date.localeCompare(b.slot_date)
+    if (dateCompare !== 0) return dateCompare
+    return timeToMinutes(a.start_time) - timeToMinutes(b.start_time)
+  })
+
+  const slot = sorted[0]
+  const { location, locationMatch } = buildLocation(slot, slot)
+  const durationMinutes = Math.max(timeToMinutes(slot.end_time) - timeToMinutes(slot.start_time), 30)
+
+  return {
+    date: slot.slot_date,
+    start: normalizeTimeString(slot.start_time),
+    end: normalizeTimeString(slot.end_time),
+    location,
+    locationMatch,
+    campusMatch: Boolean(slot.campus),
+    durationMinutes,
+  }
+}
+
+function buildFallbackMeetingSlot(
+  userA: UserWithData,
+  userB: UserWithData,
+): {
+  overlappingSlot: { date: string; start: string; end: string; location: string | null; locationMatch: boolean }
+  overlapMinutes: number
+  campusMatch: boolean
+  locationMatch: boolean
+  availabilityTier: 0 | 1 | 2
+} {
+  const hasSlotsA = userA.slots.length > 0
+  const hasSlotsB = userB.slots.length > 0
+  const availabilityTier: 0 | 1 | 2 = hasSlotsA && hasSlotsB ? 2 : hasSlotsA || hasSlotsB ? 1 : 0
+
+  const slotFromA = pickBestSingleUserSlot(userA.slots)
+  const slotFromB = pickBestSingleUserSlot(userB.slots)
+
+  const anchor =
+    slotFromA && slotFromB
+      ? slotFromA.date.localeCompare(slotFromB.date) <= 0
+        ? slotFromA
+        : slotFromB
+      : slotFromA || slotFromB
+
+  if (anchor) {
+    return {
+      overlappingSlot: {
+        date: anchor.date,
+        start: anchor.start,
+        end: anchor.end,
+        location: anchor.location,
+        locationMatch: anchor.locationMatch,
+      },
+      overlapMinutes: anchor.durationMinutes,
+      campusMatch: anchor.campusMatch,
+      locationMatch: anchor.locationMatch,
+      availabilityTier,
+    }
+  }
+
+  const meetingDate = pickPreferredMeetingDate(userA.slots, userB.slots)
+  const startMinutes = timeToMinutes(DEFAULT_MEETING_TIME_RANGE.start)
+  const endMinutes = timeToMinutes(DEFAULT_MEETING_TIME_RANGE.end)
+
+  return {
+    overlappingSlot: {
+      date: meetingDate,
+      start: DEFAULT_MEETING_TIME_RANGE.start,
+      end: DEFAULT_MEETING_TIME_RANGE.end,
+      location: null,
+      locationMatch: false,
+    },
+    overlapMinutes: Math.max(endMinutes - startMinutes, 30),
+    campusMatch: false,
+    locationMatch: false,
+    availabilityTier,
+  }
 }
 
 /**
@@ -284,6 +404,40 @@ function findRelaxedSlot(
  * 4. Greedily assigns matches
  * 5. Returns match data to be inserted
  */
+
+async function getConfirmedUserIds(supabaseAdmin: SupabaseClient): Promise<Set<string> | null> {
+  try {
+    const confirmed = new Set<string>()
+    const perPage = 1000
+    let page = 1
+
+    // Paginate through auth users to gather confirmed emails
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage })
+      if (error) {
+        console.error("Failed to load auth users for verification filter:", error)
+        return null
+      }
+
+      const users = data?.users || []
+      users.forEach((user) => {
+        if (user.email_confirmed_at) {
+          confirmed.add(user.id)
+        }
+      })
+
+      if (users.length < perPage) break
+      page += 1
+    }
+
+    return confirmed
+  } catch (error) {
+    console.error("Unexpected error while collecting confirmed user ids:", error)
+    return null
+  }
+}
+
 export async function runMatching(
   supabaseAdmin: SupabaseClient,
 ): Promise<{ matches: Omit<Match, "id" | "created_at">[]; summary: string }> {
@@ -298,6 +452,16 @@ export async function runMatching(
     throw new Error("Failed to load profiles")
   }
 
+  const verifiedUserIds = await getConfirmedUserIds(supabaseAdmin)
+  const activeProfiles = profiles as Profile[]
+  const eligibleProfiles = verifiedUserIds
+    ? activeProfiles.filter((profile) => verifiedUserIds.has(profile.user_id))
+    : activeProfiles
+
+  if (verifiedUserIds) {
+    console.log(`[Matching] ${eligibleProfiles.length}/${activeProfiles.length} active profiles are email-confirmed`)
+  }
+
   // 2. Load all availability slots
   const { data: allSlots, error: slotsError } = await supabaseAdmin.from("availability_slots").select("*")
 
@@ -308,21 +472,21 @@ export async function runMatching(
   // 3. Group slots by user
   const slotsByUser = new Map<string, AvailabilitySlot[]>()
   for (const slot of allSlots as AvailabilitySlot[]) {
+    if (!isAllowedMeetingDate(slot.slot_date)) continue
     const existing = slotsByUser.get(slot.user_id) || []
     existing.push(slot)
     slotsByUser.set(slot.user_id, existing)
   }
 
   // 4. Build user data array
-  const users: UserWithData[] = (profiles as Profile[])
-    .filter((p) => slotsByUser.has(p.user_id)) // Only users with availability
-    .map((p) => ({
-      userId: p.user_id,
-      profile: p,
-      slots: slotsByUser.get(p.user_id) || [],
-    }))
+  const users: UserWithData[] = eligibleProfiles.map((p) => ({
+    userId: p.user_id,
+    profile: p,
+    slots: slotsByUser.get(p.user_id) || [],
+  }))
+  const usersWithSlots = users.filter((u) => u.slots.length > 0)
 
-  console.log(`[Matching] Found ${users.length} active users with availability`)
+  console.log(`[Matching] Found ${usersWithSlots.length} users with availability (${users.length} total eligible)`)
 
   // 5. Generate all candidate pairs with overlapping availability
   const crossGenderCandidates: CandidatePair[] = []
@@ -330,10 +494,10 @@ export async function runMatching(
   const crossCounts = new Map<string, number>()
   const sameCounts = new Map<string, number>()
 
-  for (let i = 0; i < users.length; i++) {
-    for (let j = i + 1; j < users.length; j++) {
-      const userA = users[i]
-      const userB = users[j]
+  for (let i = 0; i < usersWithSlots.length; i++) {
+    for (let j = i + 1; j < usersWithSlots.length; j++) {
+      const userA = usersWithSlots[i]
+      const userB = usersWithSlots[j]
 
       const overlappingSlot = findBestOverlappingSlot(userA.slots, userB.slots)
 
@@ -361,6 +525,7 @@ export async function runMatching(
         campusMatch: overlappingSlot.campusMatch,
         locationMatch: overlappingSlot.locationMatch,
         crossGender,
+        availabilityTier: 2,
         overlappingSlot,
       }
 
@@ -376,12 +541,14 @@ export async function runMatching(
     }
   }
 
-  const totalCandidates = crossGenderCandidates.length + sameGenderCandidates.length
+  let totalCandidates = crossGenderCandidates.length + sameGenderCandidates.length
   console.log(`[Matching] Found ${totalCandidates} candidate pairs (${crossGenderCandidates.length} cross-gender, ${sameGenderCandidates.length} same/unspecified)`)
 
   // 6. Sort candidates to prioritize users with fewer options, then by score and overlap length
   const sortCandidates = (arr: CandidatePair[], counts: Map<string, number>) =>
     arr.sort((a, b) => {
+      if (b.availabilityTier !== a.availabilityTier) return b.availabilityTier - a.availabilityTier
+
       const minOptionsA = Math.min(counts.get(a.userA.userId) || 0, counts.get(a.userB.userId) || 0)
       const minOptionsB = Math.min(counts.get(b.userA.userId) || 0, counts.get(b.userB.userId) || 0)
 
@@ -438,46 +605,85 @@ export async function runMatching(
     const relaxedSameCounts = new Map<string, number>()
 
     for (let i = 0; i < pool.length; i++) {
-      for (let j = i + 1; j < pool.length; j++) {
-        const userA = pool[i]
-        const userB = pool[j]
+    for (let j = i + 1; j < pool.length; j++) {
+      const userA = pool[i]
+      const userB = pool[j]
 
-        const relaxedSlot = findRelaxedSlot(userA.slots, userB.slots)
-        if (!relaxedSlot) continue
+      const relaxedSlot = findRelaxedSlot(userA.slots, userB.slots)
 
-        const interestScore = calculateInterestScore(userA.profile.interests || [], userB.profile.interests || [])
-        const giftScore = calculateInterestScore(
-          parseGiftPreferences(userA.profile.gift_preferences),
-          parseGiftPreferences(userB.profile.gift_preferences),
-        )
+      const interestScore = calculateInterestScore(userA.profile.interests || [], userB.profile.interests || [])
+      const giftScore = calculateInterestScore(
+        parseGiftPreferences(userA.profile.gift_preferences),
+        parseGiftPreferences(userB.profile.gift_preferences),
+      )
 
-        const overlapFactor = relaxedSlot.minutes > 0 ? Math.min(relaxedSlot.minutes / 90, 1) : 0
+      let overlapMinutes = 0
+      let campusMatch = false
+      let locationMatch = false
+      let availabilityTier: 0 | 1 | 2 = 0
+      let timeScore = 0
+      let datePenaltyScore = 0
+      let gapPenaltyScore = 0
+
+      let overlappingSlotData: CandidatePair["overlappingSlot"] | null = null
+
+      if (relaxedSlot) {
+        overlapMinutes = relaxedSlot.minutes
+        const overlapFactor = overlapMinutes > 0 ? Math.min(relaxedSlot.minutes / 90, 1) : 0
         const gapPenalty = Math.min(relaxedSlot.gapMinutes / 180, 1) // penalize >3h gaps
         const datePenalty = Math.min(relaxedSlot.dateDiffMinutes / (60 * 24 * 3), 1) // penalize >3 days apart
-        const timeScore = overlapFactor > 0 ? overlapFactor : 1 - gapPenalty
-        const campusBonus = relaxedSlot.campusMatch ? 0.1 : 0
-        const locationBonus = relaxedSlot.locationMatch ? 0.05 : 0
-
-        const score =
-          interestScore * 0.45 + giftScore * 0.2 + timeScore * 0.25 + campusBonus + locationBonus - datePenalty * 0.1
-        const crossGender = isCrossGender(userA.profile, userB.profile)
-
-        const candidate: CandidatePair = {
-          userA,
-          userB,
-          score,
-          overlapMinutes: relaxedSlot.minutes,
-          campusMatch: relaxedSlot.campusMatch,
+        timeScore = overlapFactor > 0 ? overlapFactor : 1 - gapPenalty
+        datePenaltyScore = datePenalty
+        campusMatch = relaxedSlot.campusMatch
+        locationMatch = relaxedSlot.locationMatch
+        overlappingSlotData = {
+          date: relaxedSlot.date,
+          start: relaxedSlot.start,
+          end: relaxedSlot.end,
+          location: relaxedSlot.location || "Koordinasyon gerekli",
           locationMatch: relaxedSlot.locationMatch,
-          crossGender,
-          overlappingSlot: {
-            date: relaxedSlot.date,
-            start: relaxedSlot.start,
-            end: relaxedSlot.end,
-            location: relaxedSlot.location || "Koordinasyon gerekli",
-            locationMatch: relaxedSlot.locationMatch,
-          },
         }
+        availabilityTier = 2
+      } else {
+        const fallback = buildFallbackMeetingSlot(userA, userB)
+        overlapMinutes = fallback.overlapMinutes
+        campusMatch = fallback.campusMatch
+        locationMatch = fallback.locationMatch
+        availabilityTier = fallback.availabilityTier
+        overlappingSlotData = {
+          ...fallback.overlappingSlot,
+          location: fallback.overlappingSlot.location || "Koordinasyon gerekli",
+        }
+        timeScore = overlapMinutes > 0 ? Math.min(overlapMinutes / 90, 1) : 0.25
+        gapPenaltyScore = availabilityTier === 0 ? 0.25 : availabilityTier === 1 ? 0.1 : 0
+      }
+
+      if (!overlappingSlotData) continue
+
+      const campusBonus = campusMatch ? 0.1 : 0
+      const locationBonus = locationMatch ? 0.05 : 0
+
+      const score =
+        interestScore * 0.45 +
+        giftScore * 0.2 +
+        timeScore * 0.25 +
+        campusBonus +
+        locationBonus -
+        datePenaltyScore * 0.1 -
+        gapPenaltyScore * 0.05
+      const crossGender = isCrossGender(userA.profile, userB.profile)
+
+      const candidate: CandidatePair = {
+        userA,
+        userB,
+        score,
+        overlapMinutes,
+        campusMatch,
+        locationMatch,
+        crossGender,
+        availabilityTier,
+        overlappingSlot: overlappingSlotData,
+      }
 
         if (crossGender) {
           relaxedCrossCandidates.push(candidate)
@@ -488,6 +694,8 @@ export async function runMatching(
           relaxedSameCounts.set(userA.userId, (relaxedSameCounts.get(userA.userId) || 0) + 1)
           relaxedSameCounts.set(userB.userId, (relaxedSameCounts.get(userB.userId) || 0) + 1)
         }
+
+        totalCandidates += 1
       }
     }
 
@@ -533,7 +741,7 @@ export async function runMatching(
 
   console.log(`[Matching] Created ${finalMatches.length} matches`)
 
-  const summary = `Matching complete: ${users.length} users, ${totalCandidates} candidate pairs (${crossGenderCandidates.length} cross-gender), ${finalMatches.length} final matches (${fallbackMatches} fallback), ${users.length - matchedUsers.size} unmatched users`
+  const summary = `Matching complete: ${users.length} eligible users (${usersWithSlots.length} with slots), ${totalCandidates} candidate pairs (${crossGenderCandidates.length} slot-based cross-gender), ${finalMatches.length} final matches (${fallbackMatches} fallback), ${users.length - matchedUsers.size} unmatched users`
 
   return { matches: finalMatches, summary }
 }

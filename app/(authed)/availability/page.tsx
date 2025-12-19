@@ -5,23 +5,11 @@ import type React from "react"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase, type AvailabilitySlot, type Profile } from "@/lib/supabaseClient"
-import { CAMPUS_LOCATION_OPTIONS, HOURLY_TIME_OPTIONS, SANTRAL_CAMPUS } from "@/lib/constants"
+import { CAMPUS_LOCATION_OPTIONS, HOURLY_TIME_OPTIONS, MEETING_DATE_RANGE, SANTRAL_CAMPUS } from "@/lib/constants"
 import { StarsBackground } from "@/components/StarsBackground"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-
-const getAllowedDateWindow = () => {
-  const now = new Date()
-  const currentYear = now.getFullYear()
-  const decemberEnd = new Date(`${currentYear}-12-31T23:59:59`)
-  const targetYear = now > decemberEnd ? currentYear + 1 : currentYear
-
-  return {
-    startDate: `${targetYear}-12-23`,
-    endDate: `${targetYear}-12-26`,
-  }
-}
 
 const getEndTimeFromStart = (startTime: string) => {
   const [hours, minutes] = startTime.split(":").map((part) => Number.parseInt(part, 10))
@@ -96,7 +84,7 @@ export default function AvailabilityPage() {
     missingFields: [],
   })
   const [slots, setSlots] = useState<AvailabilitySlot[]>([])
-  const { startDate, endDate } = getAllowedDateWindow()
+  const { startDateString: startDate, endDateString: endDate } = MEETING_DATE_RANGE
   const defaultStart = HOURLY_TIME_OPTIONS[0]?.value || "09:00"
   const [newSlot, setNewSlot] = useState({
     slot_date: startDate,
