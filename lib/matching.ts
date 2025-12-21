@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Profile, AvailabilitySlot, Match } from "./supabaseClient"
-import { DEFAULT_MEETING_TIME_RANGE, MEETING_ALLOWED_DATES, MEETING_DATE_RANGE } from "./constants"
+import { DEFAULT_MEETING_TIME_RANGE, MEETING_ALLOWED_DATES, MEETING_DATE_RANGE, ADMIN_EMAILS } from "./constants"
 
 // Types for matching algorithm
 interface UserWithData {
@@ -458,9 +458,12 @@ export async function runMatching(
     ? activeProfiles.filter((profile) => verifiedUserIds.has(profile.user_id))
     : activeProfiles
 
+  const nonAdminProfiles = eligibleProfiles.filter((profile) => !ADMIN_EMAILS.includes(profile.email || ""))
+
   if (verifiedUserIds) {
     console.log(`[Matching] ${eligibleProfiles.length}/${activeProfiles.length} active profiles are email-confirmed`)
   }
+  console.log(`[Matching] ${nonAdminProfiles.length}/${eligibleProfiles.length} non-admin users eligible for matching`)
 
   // 2. Load all availability slots
   const { data: allSlots, error: slotsError } = await supabaseAdmin.from("availability_slots").select("*")
@@ -478,8 +481,8 @@ export async function runMatching(
     slotsByUser.set(slot.user_id, existing)
   }
 
-  // 4. Build user data array
-  const users: UserWithData[] = eligibleProfiles.map((p) => ({
+  // 4. Build user data array (excluding admins)
+  const users: UserWithData[] = nonAdminProfiles.map((p) => ({
     userId: p.user_id,
     profile: p,
     slots: slotsByUser.get(p.user_id) || [],
@@ -605,85 +608,85 @@ export async function runMatching(
     const relaxedSameCounts = new Map<string, number>()
 
     for (let i = 0; i < pool.length; i++) {
-    for (let j = i + 1; j < pool.length; j++) {
-      const userA = pool[i]
-      const userB = pool[j]
+      for (let j = i + 1; j < pool.length; j++) {
+        const userA = pool[i]
+        const userB = pool[j]
 
-      const relaxedSlot = findRelaxedSlot(userA.slots, userB.slots)
+        const relaxedSlot = findRelaxedSlot(userA.slots, userB.slots)
 
-      const interestScore = calculateInterestScore(userA.profile.interests || [], userB.profile.interests || [])
-      const giftScore = calculateInterestScore(
-        parseGiftPreferences(userA.profile.gift_preferences),
-        parseGiftPreferences(userB.profile.gift_preferences),
-      )
+        const interestScore = calculateInterestScore(userA.profile.interests || [], userB.profile.interests || [])
+        const giftScore = calculateInterestScore(
+          parseGiftPreferences(userA.profile.gift_preferences),
+          parseGiftPreferences(userB.profile.gift_preferences),
+        )
 
-      let overlapMinutes = 0
-      let campusMatch = false
-      let locationMatch = false
-      let availabilityTier: 0 | 1 | 2 = 0
-      let timeScore = 0
-      let datePenaltyScore = 0
-      let gapPenaltyScore = 0
+        let overlapMinutes = 0
+        let campusMatch = false
+        let locationMatch = false
+        let availabilityTier: 0 | 1 | 2 = 0
+        let timeScore = 0
+        let datePenaltyScore = 0
+        let gapPenaltyScore = 0
 
-      let overlappingSlotData: CandidatePair["overlappingSlot"] | null = null
+        let overlappingSlotData: CandidatePair["overlappingSlot"] | null = null
 
-      if (relaxedSlot) {
-        overlapMinutes = relaxedSlot.minutes
-        const overlapFactor = overlapMinutes > 0 ? Math.min(relaxedSlot.minutes / 90, 1) : 0
-        const gapPenalty = Math.min(relaxedSlot.gapMinutes / 180, 1) // penalize >3h gaps
-        const datePenalty = Math.min(relaxedSlot.dateDiffMinutes / (60 * 24 * 3), 1) // penalize >3 days apart
-        timeScore = overlapFactor > 0 ? overlapFactor : 1 - gapPenalty
-        datePenaltyScore = datePenalty
-        campusMatch = relaxedSlot.campusMatch
-        locationMatch = relaxedSlot.locationMatch
-        overlappingSlotData = {
-          date: relaxedSlot.date,
-          start: relaxedSlot.start,
-          end: relaxedSlot.end,
-          location: relaxedSlot.location || "Koordinasyon gerekli",
-          locationMatch: relaxedSlot.locationMatch,
+        if (relaxedSlot) {
+          overlapMinutes = relaxedSlot.minutes
+          const overlapFactor = overlapMinutes > 0 ? Math.min(relaxedSlot.minutes / 90, 1) : 0
+          const gapPenalty = Math.min(relaxedSlot.gapMinutes / 180, 1) // penalize >3h gaps
+          const datePenalty = Math.min(relaxedSlot.dateDiffMinutes / (60 * 24 * 3), 1) // penalize >3 days apart
+          timeScore = overlapFactor > 0 ? overlapFactor : 1 - gapPenalty
+          datePenaltyScore = datePenalty
+          campusMatch = relaxedSlot.campusMatch
+          locationMatch = relaxedSlot.locationMatch
+          overlappingSlotData = {
+            date: relaxedSlot.date,
+            start: relaxedSlot.start,
+            end: relaxedSlot.end,
+            location: relaxedSlot.location || "Koordinasyon gerekli",
+            locationMatch: relaxedSlot.locationMatch,
+          }
+          availabilityTier = 2
+        } else {
+          const fallback = buildFallbackMeetingSlot(userA, userB)
+          overlapMinutes = fallback.overlapMinutes
+          campusMatch = fallback.campusMatch
+          locationMatch = fallback.locationMatch
+          availabilityTier = fallback.availabilityTier
+          overlappingSlotData = {
+            ...fallback.overlappingSlot,
+            location: fallback.overlappingSlot.location || "Koordinasyon gerekli",
+          }
+          timeScore = overlapMinutes > 0 ? Math.min(overlapMinutes / 90, 1) : 0.25
+          gapPenaltyScore = availabilityTier === 0 ? 0.25 : availabilityTier === 1 ? 0.1 : 0
         }
-        availabilityTier = 2
-      } else {
-        const fallback = buildFallbackMeetingSlot(userA, userB)
-        overlapMinutes = fallback.overlapMinutes
-        campusMatch = fallback.campusMatch
-        locationMatch = fallback.locationMatch
-        availabilityTier = fallback.availabilityTier
-        overlappingSlotData = {
-          ...fallback.overlappingSlot,
-          location: fallback.overlappingSlot.location || "Koordinasyon gerekli",
+
+        if (!overlappingSlotData) continue
+
+        const campusBonus = campusMatch ? 0.1 : 0
+        const locationBonus = locationMatch ? 0.05 : 0
+
+        const score =
+          interestScore * 0.45 +
+          giftScore * 0.2 +
+          timeScore * 0.25 +
+          campusBonus +
+          locationBonus -
+          datePenaltyScore * 0.1 -
+          gapPenaltyScore * 0.05
+        const crossGender = isCrossGender(userA.profile, userB.profile)
+
+        const candidate: CandidatePair = {
+          userA,
+          userB,
+          score,
+          overlapMinutes,
+          campusMatch,
+          locationMatch,
+          crossGender,
+          availabilityTier,
+          overlappingSlot: overlappingSlotData,
         }
-        timeScore = overlapMinutes > 0 ? Math.min(overlapMinutes / 90, 1) : 0.25
-        gapPenaltyScore = availabilityTier === 0 ? 0.25 : availabilityTier === 1 ? 0.1 : 0
-      }
-
-      if (!overlappingSlotData) continue
-
-      const campusBonus = campusMatch ? 0.1 : 0
-      const locationBonus = locationMatch ? 0.05 : 0
-
-      const score =
-        interestScore * 0.45 +
-        giftScore * 0.2 +
-        timeScore * 0.25 +
-        campusBonus +
-        locationBonus -
-        datePenaltyScore * 0.1 -
-        gapPenaltyScore * 0.05
-      const crossGender = isCrossGender(userA.profile, userB.profile)
-
-      const candidate: CandidatePair = {
-        userA,
-        userB,
-        score,
-        overlapMinutes,
-        campusMatch,
-        locationMatch,
-        crossGender,
-        availabilityTier,
-        overlappingSlot: overlappingSlotData,
-      }
 
         if (crossGender) {
           relaxedCrossCandidates.push(candidate)
